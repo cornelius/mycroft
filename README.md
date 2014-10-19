@@ -1,0 +1,1 @@
+This is the server of [Project MySelf](https://github.com/cornelius/project-myself).
