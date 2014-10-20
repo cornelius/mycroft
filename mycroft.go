@@ -9,22 +9,29 @@ import (
   "strconv"
   "os"
   "encoding/json"
+  "strings"
+  "encoding/base64"
+  "code.google.com/p/go.crypto/bcrypt"
+  "errors"
 )
 
 type Admin struct {
-  Password string `json:"password"`
+  PasswordHash string `json:"-"`
 }
 
 var admins map[string]Admin
 
-func createAdmin() (id string, admin Admin) {
+func createAdmin() (id string, password_string string, admin Admin) {
   id = strconv.Itoa(rand.Intn(1000000000))
-  admin = Admin{strconv.Itoa(rand.Intn(1000000000))}
+  password_string = strconv.Itoa(rand.Intn(1000000000))
+  password := []byte(password_string)
+  passwordHash, _ := bcrypt.GenerateFromPassword(password, 10)
+  admin = Admin{string(passwordHash)}
   return
 }
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
-  fmt.Fprintf(w, "hello")
+  fmt.Fprintf(w, "hello\n")
 }
 
 func adminRegisterHandler(pid int) http.Handler {
@@ -36,10 +43,10 @@ func adminRegisterHandler(pid int) http.Handler {
     received_pid := mux.Vars(r)["pid"]
     if received_pid == strconv.Itoa(pid) {
       fmt.Printf("Register admin client with pid %v\n", received_pid)
-      id, admin := createAdmin()
+      id, password, admin := createAdmin()
       admins[id] = admin
       fmt.Fprintf(w, "Admin id: %v\n", id)
-      fmt.Fprintf(w, "Password: %v\n", admin.Password)
+      fmt.Fprintf(w, "Password: %v\n", password)
     } else {
       fmt.Printf("Registering admin client with wrong pid %v. Exiting.\n", received_pid)
       os.Exit(1)
@@ -63,6 +70,58 @@ func adminClients(w http.ResponseWriter, r *http.Request) {
   }
 }
 
+func ParseBasicAuthHeader(header http.Header) (username string, password string, err error) {
+  authHeader, ok := header["Authorization"]
+  if !ok {
+    return "", "", errors.New("Authorizaton header missing")
+  }
+
+  auth := strings.SplitN(authHeader[0], " ", 2)
+
+  if len(auth) != 2 || auth[0] != "Basic" {
+    return "", "", errors.New("Bad Syntax")
+  }
+
+  payload, _ := base64.StdEncoding.DecodeString(auth[1])
+  pair := strings.SplitN(string(payload), ":", 2)
+
+  if len(pair) != 2 {
+    return pair[0], "", nil
+  }
+
+  return pair[0], pair[1], nil
+}
+
+type handler func(w http.ResponseWriter, r *http.Request)
+
+func BasicAuth(pass handler) handler {
+  return func(w http.ResponseWriter, r *http.Request) {
+    username, password, err := ParseBasicAuthHeader(r.Header)
+
+    if err != nil {
+      http.Error(w, err.Error(), http.StatusBadRequest)
+      return
+    }
+
+    if password == "" || !ValidatePassword(username, password) {
+      http.Error(w, "Authorization failed", http.StatusUnauthorized)
+      return
+    }
+
+    pass(w, r)
+  }
+}
+
+func ValidatePassword(username, password string) bool {
+  if admin, ok := admins[username]; ok {
+    err := bcrypt.CompareHashAndPassword([]byte(admin.PasswordHash), []byte(password))
+    if err == nil {
+      return true
+    }
+  }
+  return false
+}
+
 func main() {
   admins = make(map[string]Admin)
 
@@ -77,7 +136,7 @@ func main() {
   r := mux.NewRouter()
   r.HandleFunc("/", rootHandler)
   r.Handle("/admin/register/{pid}", adminRegisterHandler(pid)).Methods("POST")
-  r.HandleFunc("/admin/clients", adminClients).Methods("GET")
+  r.HandleFunc("/admin/clients", BasicAuth(adminClients)).Methods("GET")
 
   http.ListenAndServe(":" + strconv.Itoa(port), r)
 }
