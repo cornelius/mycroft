@@ -45,8 +45,12 @@ func adminRegisterHandler(pid int) http.Handler {
       fmt.Printf("Register admin client with pid %v\n", received_pid)
       id, password, admin := createAdmin()
       admins[id] = admin
-      fmt.Fprintf(w, "Admin id: %v\n", id)
-      fmt.Fprintf(w, "Password: %v\n", password)
+      json_map := map[string]string{
+        "admin_id": id,
+        "password": password,
+      }
+      json_string, _ := json.Marshal(json_map)
+      fmt.Fprintf(w, "%v\n", string(json_string))
     } else {
       fmt.Printf("Registering admin client with wrong pid %v. Exiting.\n", received_pid)
       os.Exit(1)
