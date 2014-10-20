@@ -144,7 +144,7 @@ func (h VarsHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 type Space struct {
   dir string
   admins map[string]Admin
-  persistant bool
+  persistent bool
 }
 
 func (space Space) AdminFilePath() string {
@@ -152,7 +152,7 @@ func (space Space) AdminFilePath() string {
 }
 
 func (space Space) WriteAdmins() {
-  if space.persistant {
+  if space.persistent {
     jsonString, _ := json.Marshal(space.admins)
     err := ioutil.WriteFile(space.AdminFilePath(), jsonString, 0600)
     if err != nil {
