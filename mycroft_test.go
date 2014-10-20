@@ -3,6 +3,8 @@ package main
 import (
   "testing"
   "math/rand"
+  "net/http"
+  "net/http/httptest"
 )
 
 func TestCreateAdmin(t *testing.T) {
@@ -60,5 +62,42 @@ func TestBasicAuth(t *testing.T) {
 
   if err == nil {
     t.Errorf("ParseBasicAuthHeader(%v), expected error", header1)
+  }
+}
+
+func TestAdminRoot(t *testing.T) {
+  expected_body := "hello\n"
+
+  recorder := httptest.NewRecorder()
+  req, err := http.NewRequest("GET", "http://example.com", nil)
+  if err != nil {
+    t.Errorf("Expected no error")
+  }
+
+  rootHandler(recorder, req)
+
+  body := recorder.Body.String()
+  if body != expected_body {
+    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  }
+}
+
+func TestAdminRegister(t *testing.T) {
+  expected_body := "{\"admin_id\":\"94099423\",\"password\":\"822901345\"}\n"
+
+  recorder := httptest.NewRecorder()
+  req, err := http.NewRequest("GET", "http://example.com/admin/register/1234", nil)
+  if err != nil {
+    t.Errorf("Expected no error")
+  }
+
+  admins := make(map[string]Admin)
+
+  f := adminRegisterHandler(1234, admins)
+  f(recorder, req, map[string]string{"pid":"1234"})
+
+  body := recorder.Body.String()
+  if body != expected_body {
+    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
   }
 }

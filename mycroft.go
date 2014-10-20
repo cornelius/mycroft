@@ -34,13 +34,13 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
   fmt.Fprintf(w, "hello\n")
 }
 
-func adminRegisterHandler(pid int) http.Handler {
-  fn := func(w http.ResponseWriter, r *http.Request) {
+func adminRegisterHandler(pid int, admins map[string]Admin) VarsHandler {
+  fn := func(w http.ResponseWriter, r *http.Request, vars map[string]string) {
     if len(admins) > 0 {
       http.Error(w, "Error: Admin client already registered", 400)
       return
     }
-    received_pid := mux.Vars(r)["pid"]
+    received_pid := vars["pid"]
     if received_pid == strconv.Itoa(pid) {
       fmt.Printf("Register admin client with pid %v\n", received_pid)
       id, password, admin := createAdmin()
@@ -56,7 +56,7 @@ func adminRegisterHandler(pid int) http.Handler {
       os.Exit(1)
     }
   }
-  return http.HandlerFunc(fn)
+  return fn
 }
 
 func adminsAsJson(admins map[string]Admin) (string, error) {
@@ -126,6 +126,13 @@ func ValidatePassword(username, password string) bool {
   return false
 }
 
+type VarsHandler func(http.ResponseWriter, *http.Request, map[string]string)
+
+func (h VarsHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+    vars := mux.Vars(req)
+    h(w, req, vars)
+}
+
 func main() {
   admins = make(map[string]Admin)
 
@@ -137,10 +144,10 @@ func main() {
 
   fmt.Printf("To register the admin client send a POST to http://<servername>:%v/admin/register/%v\n", port, pid)
 
-  r := mux.NewRouter()
-  r.HandleFunc("/", rootHandler)
-  r.Handle("/admin/register/{pid}", adminRegisterHandler(pid)).Methods("POST")
-  r.HandleFunc("/admin/clients", BasicAuth(adminClients)).Methods("GET")
+  router := mux.NewRouter()
+  router.HandleFunc("/", rootHandler)
+  router.Handle("/admin/register/{pid}", VarsHandler(adminRegisterHandler(pid, admins))).Methods("POST")
+  router.HandleFunc("/admin/clients", BasicAuth(adminClients)).Methods("GET")
 
-  http.ListenAndServe(":" + strconv.Itoa(port), r)
+  http.ListenAndServe(":" + strconv.Itoa(port), router)
 }
