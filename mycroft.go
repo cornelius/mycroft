@@ -19,8 +19,6 @@ type Admin struct {
   PasswordHash string `json:"-"`
 }
 
-var admins map[string]Admin
-
 func createAdmin() (id string, password_string string, admin Admin) {
   id = strconv.Itoa(rand.Intn(1000000000))
   password_string = strconv.Itoa(rand.Intn(1000000000))
@@ -64,14 +62,17 @@ func adminsAsJson(admins map[string]Admin) (string, error) {
   return string(json[:]), err
 }
 
-func adminClients(w http.ResponseWriter, r *http.Request) {
-  json, err := adminsAsJson(admins)
-  if err != nil {
-    http.Error(w, err.Error(), 500)
-    return
-  } else {
-    fmt.Fprintf(w, "%v\n", json)
+func adminClients(admins map[string]Admin) handler {
+  fn := func(w http.ResponseWriter, r *http.Request) {
+    json, err := adminsAsJson(admins)
+    if err != nil {
+      http.Error(w, err.Error(), 500)
+      return
+    } else {
+      fmt.Fprintf(w, "%v\n", json)
+    }
   }
+  return fn
 }
 
 func ParseBasicAuthHeader(header http.Header) (username string, password string, err error) {
@@ -98,7 +99,7 @@ func ParseBasicAuthHeader(header http.Header) (username string, password string,
 
 type handler func(w http.ResponseWriter, r *http.Request)
 
-func BasicAuth(pass handler) handler {
+func BasicAuth(pass handler, admins map[string]Admin) handler {
   return func(w http.ResponseWriter, r *http.Request) {
     username, password, err := ParseBasicAuthHeader(r.Header)
 
@@ -107,7 +108,7 @@ func BasicAuth(pass handler) handler {
       return
     }
 
-    if password == "" || !ValidatePassword(username, password) {
+    if password == "" || !ValidatePassword(username, password, admins) {
       http.Error(w, "Authorization failed", http.StatusUnauthorized)
       return
     }
@@ -116,7 +117,7 @@ func BasicAuth(pass handler) handler {
   }
 }
 
-func ValidatePassword(username, password string) bool {
+func ValidatePassword(username, password string, admins map[string]Admin) bool {
   if admin, ok := admins[username]; ok {
     err := bcrypt.CompareHashAndPassword([]byte(admin.PasswordHash), []byte(password))
     if err == nil {
@@ -134,7 +135,7 @@ func (h VarsHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-  admins = make(map[string]Admin)
+  admins := make(map[string]Admin)
 
   rand.Seed(time.Now().UnixNano())
 
@@ -147,7 +148,7 @@ func main() {
   router := mux.NewRouter()
   router.HandleFunc("/", rootHandler)
   router.Handle("/admin/register/{pid}", VarsHandler(adminRegisterHandler(pid, admins))).Methods("POST")
-  router.HandleFunc("/admin/clients", BasicAuth(adminClients)).Methods("GET")
+  router.HandleFunc("/admin/clients", BasicAuth(adminClients(admins), admins)).Methods("GET")
 
   http.ListenAndServe(":" + strconv.Itoa(port), router)
 }

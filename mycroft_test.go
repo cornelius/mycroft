@@ -101,3 +101,24 @@ func TestAdminRegister(t *testing.T) {
     t.Errorf("Expected body '%v', got '%v'", expected_body, body)
   }
 }
+
+func TestAdminClients(t *testing.T) {
+  expected_body := "{\"94099423\":{}}\n"
+
+  recorder := httptest.NewRecorder()
+  req, err := http.NewRequest("GET", "http://example.com/admin/clients", nil)
+  if err != nil {
+    t.Errorf("Expected no error")
+  }
+
+  admins := make(map[string]Admin)
+  admins["94099423"] = Admin{"xxx"}
+
+  f := adminClients(admins)
+  f(recorder, req)
+
+  body := recorder.Body.String()
+  if body != expected_body {
+    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  }
+}
