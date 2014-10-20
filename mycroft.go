@@ -13,10 +13,12 @@ import (
   "encoding/base64"
   "code.google.com/p/go.crypto/bcrypt"
   "errors"
+  "path/filepath"
+  "io/ioutil"
 )
 
 type Admin struct {
-  PasswordHash string `json:"-"`
+  PasswordHash string `json:"password_hash"`
 }
 
 func createAdmin() (id string, password_string string, admin Admin) {
@@ -32,9 +34,9 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
   fmt.Fprintf(w, "hello\n")
 }
 
-func adminRegisterHandler(pid int, admins map[string]Admin) VarsHandler {
+func adminRegisterHandler(pid int, space Space) VarsHandler {
   fn := func(w http.ResponseWriter, r *http.Request, vars map[string]string) {
-    if len(admins) > 0 {
+    if len(space.admins) > 0 {
       http.Error(w, "Error: Admin client already registered", 400)
       return
     }
@@ -42,7 +44,8 @@ func adminRegisterHandler(pid int, admins map[string]Admin) VarsHandler {
     if received_pid == strconv.Itoa(pid) {
       fmt.Printf("Register admin client with pid %v\n", received_pid)
       id, password, admin := createAdmin()
-      admins[id] = admin
+      space.admins[id] = admin
+      space.WriteAdmins()
       json_map := map[string]string{
         "admin_id": id,
         "password": password,
@@ -58,7 +61,11 @@ func adminRegisterHandler(pid int, admins map[string]Admin) VarsHandler {
 }
 
 func adminsAsJson(admins map[string]Admin) (string, error) {
-  json, err := json.Marshal(admins)
+  json_array := []string{}
+  for id := range admins {
+    json_array = append(json_array, id)
+  }
+  json, err := json.Marshal(json_array)
   return string(json[:]), err
 }
 
@@ -134,21 +141,74 @@ func (h VarsHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
     h(w, req, vars)
 }
 
-func main() {
-  admins := make(map[string]Admin)
+type Space struct {
+  dir string
+  admins map[string]Admin
+  persistant bool
+}
 
+func (space Space) AdminFilePath() string {
+  return filepath.Join(space.dir, "admins.json")
+}
+
+func (space Space) WriteAdmins() {
+  if space.persistant {
+    jsonString, _ := json.Marshal(space.admins)
+    err := ioutil.WriteFile(space.AdminFilePath(), jsonString, 0600)
+    if err != nil {
+      fmt.Printf("Error writing admins: %v\n", err.Error())
+    }
+  }
+}
+
+func (space Space) ReadAdmins() {
+  jsonString, err := ioutil.ReadFile(space.AdminFilePath())
+  if err != nil {
+    fmt.Printf("Error reading admins: %v\n", err.Error())
+    os.Exit(1)
+  }
+  err = json.Unmarshal(jsonString, &space.admins)
+  if err != nil {
+    fmt.Printf("Error unmarshaling admin JSON: %v\n", err.Error())
+  }
+}
+
+func main() {
+  if len(os.Args) != 2 {
+    fmt.Println("Usage: mycroft <directory>")
+    os.Exit(1)
+  }
+  
+  space := Space{os.Args[1], make(map[string]Admin), true}
+  
+  if _, err := os.Stat(space.AdminFilePath()); err == nil {
+    space.ReadAdmins()
+  } else {
+    if os.IsNotExist(err) {
+      err := os.MkdirAll(space.dir, 0700)
+      if err != nil {
+        fmt.Printf("Unable to create directory '%v'\n", space.dir)
+      }
+    } else {
+      fmt.Printf("Error: %v\n", err.Error())
+      os.Exit(1)
+    }
+  }
+  
   rand.Seed(time.Now().UnixNano())
 
   pid := rand.Intn(10000)
 
   port := 4735
 
-  fmt.Printf("To register the admin client send a POST to http://<servername>:%v/admin/register/%v\n", port, pid)
+  if len(space.admins) == 0 {
+    fmt.Printf("To register the admin client send a POST to http://<servername>:%v/admin/register/%v\n", port, pid)
+  }
 
   router := mux.NewRouter()
   router.HandleFunc("/", rootHandler)
-  router.Handle("/admin/register/{pid}", VarsHandler(adminRegisterHandler(pid, admins))).Methods("POST")
-  router.HandleFunc("/admin/clients", BasicAuth(adminClients(admins), admins)).Methods("GET")
+  router.Handle("/admin/register/{pid}", VarsHandler(adminRegisterHandler(pid, space))).Methods("POST")
+  router.HandleFunc("/admin/clients", BasicAuth(adminClients(space.admins), space.admins)).Methods("GET")
 
   http.ListenAndServe(":" + strconv.Itoa(port), router)
 }

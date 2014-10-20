@@ -31,7 +31,7 @@ func TestAdminsAsJson(t *testing.T) {
   admins[id] = admin
 
   json_string, _ := adminsAsJson(admins)
-  expected_json_string := "{\"297281668\":{}}"
+  expected_json_string := "[\"297281668\"]"
 
   if json_string != expected_json_string {
     t.Errorf("adminsAsJson() = '%v', want '%v'", json_string, expected_json_string)
@@ -91,9 +91,9 @@ func TestAdminRegister(t *testing.T) {
     t.Errorf("Expected no error")
   }
 
-  admins := make(map[string]Admin)
+  space := Space{"/tmp/mycroft-test", make(map[string]Admin), false}
 
-  f := adminRegisterHandler(1234, admins)
+  f := adminRegisterHandler(1234, space)
   f(recorder, req, map[string]string{"pid":"1234"})
 
   body := recorder.Body.String()
@@ -103,7 +103,7 @@ func TestAdminRegister(t *testing.T) {
 }
 
 func TestAdminClients(t *testing.T) {
-  expected_body := "{\"94099423\":{}}\n"
+  expected_body := "[\"94099423\"]\n"
 
   recorder := httptest.NewRecorder()
   req, err := http.NewRequest("GET", "http://example.com/admin/clients", nil)
