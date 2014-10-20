@@ -8,10 +8,11 @@ import (
   "github.com/gorilla/mux"
   "strconv"
   "os"
+  "encoding/json"
 )
 
 type Admin struct {
-  password string
+  Password string `json:"password"`
 }
 
 var admins map[string]Admin
@@ -38,13 +39,28 @@ func adminRegisterHandler(pid int) http.Handler {
       id, admin := createAdmin()
       admins[id] = admin
       fmt.Fprintf(w, "Admin id: %v\n", id)
-      fmt.Fprintf(w, "Password: %v\n", admin.password)
+      fmt.Fprintf(w, "Password: %v\n", admin.Password)
     } else {
       fmt.Printf("Registering admin client with wrong pid %v. Exiting.\n", received_pid)
       os.Exit(1)
     }
   }
   return http.HandlerFunc(fn)
+}
+
+func adminsAsJson(admins map[string]Admin) (string, error) {
+  json, err := json.Marshal(admins)
+  return string(json[:]), err
+}
+
+func adminClients(w http.ResponseWriter, r *http.Request) {
+  json, err := adminsAsJson(admins)
+  if err != nil {
+    http.Error(w, err.Error(), 500)
+    return
+  } else {
+    fmt.Fprintf(w, "%v\n", json)
+  }
 }
 
 func main() {
@@ -61,6 +77,7 @@ func main() {
   r := mux.NewRouter()
   r.HandleFunc("/", rootHandler)
   r.Handle("/admin/register/{pid}", adminRegisterHandler(pid)).Methods("POST")
+  r.HandleFunc("/admin/clients", adminClients).Methods("GET")
 
   http.ListenAndServe(":" + strconv.Itoa(port), r)
 }
