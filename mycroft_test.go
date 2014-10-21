@@ -5,6 +5,7 @@ import (
   "math/rand"
   "net/http"
   "net/http/httptest"
+  "sort"
 )
 
 func TestCreateAdmin(t *testing.T) {
@@ -132,9 +133,39 @@ func TestCreateBucket(t *testing.T) {
     t.Errorf("Expected no error")
   }
 
-  space := Space{"/tmp/mycroft-test", make(map[string]Admin), false}
+  space := Space{"/tmp/mycroft-test1", make(map[string]Admin), false}
   
   f := createBucketHandler(space)
+  f(recorder, req)
+
+  body := recorder.Body.String()
+  if body != expected_body {
+    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  }
+}
+
+func TestAdminListBuckets(t *testing.T) {
+  recorder := httptest.NewRecorder()
+  req, err := http.NewRequest("GET", "http://example.com/admin/clients", nil)
+  if err != nil {
+    t.Errorf("Expected no error")
+  }
+
+  admins := make(map[string]Admin)
+  admins["94099423"] = Admin{"xxx"}
+
+  space := Space{"/tmp/mycroft-test2", make(map[string]Admin), false}
+  
+  buckets := []string{}
+  bucketId1, _ := space.CreateBucket()
+  buckets = append(buckets, bucketId1)
+  bucketId2, _ := space.CreateBucket()
+  buckets = append(buckets, bucketId2)
+  sort.Strings(buckets)
+
+  expected_body := "[\"" + buckets[0] + "\",\"" + buckets[1] + "\"]\n"
+
+  f := adminListBuckets(space)
   f(recorder, req)
 
   body := recorder.Body.String()

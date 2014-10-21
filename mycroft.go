@@ -82,6 +82,27 @@ func adminClients(admins map[string]Admin) handler {
   return fn
 }
 
+func adminListBuckets(space Space) handler {
+  fn := func(w http.ResponseWriter, r *http.Request) {
+    buckets, err := ioutil.ReadDir(space.DataDirPath())
+    if err != nil {
+      http.Error(w, err.Error(), 500)
+      return
+    }
+    bucketList := []string{}
+    for i := range buckets {
+      bucketList = append(bucketList, buckets[i].Name())
+    }
+    json, err := json.Marshal(bucketList)
+    if err != nil {
+      http.Error(w, err.Error(), 500)
+      return
+    }
+    fmt.Fprintf(w, "%v\n", string(json[:]))
+  }
+  return fn
+}
+
 func ParseBasicAuthHeader(header http.Header) (username string, password string, err error) {
   authHeader, ok := header["Authorization"]
   if !ok {
@@ -177,12 +198,18 @@ func (space Space) ReadAdmins() {
   }
 }
 
+func (space Space) CreateBucket() (string, error) {
+  bucketId := strconv.Itoa(rand.Intn(1000000000))
+
+  bucketDirPath := filepath.Join(space.DataDirPath(), bucketId)
+  err := os.MkdirAll(bucketDirPath, 0700)
+  
+  return bucketId, err
+}
+
 func createBucketHandler(space Space) handler {
   fn := func(w http.ResponseWriter, r *http.Request) {
-    bucketId := strconv.Itoa(rand.Intn(1000000000))
-
-    bucketDirPath := filepath.Join(space.DataDirPath(), bucketId)
-    err := os.MkdirAll(bucketDirPath, 0700)
+    bucketId, err := space.CreateBucket()
     if err != nil {
       http.Error(w, err.Error(), 500)
       return
@@ -233,6 +260,7 @@ func main() {
   router.HandleFunc("/", rootHandler)
   router.Handle("/admin/register/{pid}", VarsHandler(adminRegisterHandler(pid, space))).Methods("POST")
   router.HandleFunc("/admin/clients", BasicAuth(adminClients(space.admins), space.admins)).Methods("GET")
+  router.HandleFunc("/admin/buckets", BasicAuth(adminListBuckets(space), space.admins)).Methods("GET")
   router.HandleFunc("/data", BasicAuth(createBucketHandler(space), space.admins)).Methods("POST")
   
   http.ListenAndServe(":" + strconv.Itoa(port), router)
