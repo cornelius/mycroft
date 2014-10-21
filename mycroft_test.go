@@ -6,6 +6,9 @@ import (
   "net/http"
   "net/http/httptest"
   "sort"
+  "os"
+  "strings"
+  "io/ioutil"
 )
 
 func TestCreateAdmin(t *testing.T) {
@@ -134,7 +137,7 @@ func TestCreateBucket(t *testing.T) {
   }
 
   space := Space{"/tmp/mycroft-test1", make(map[string]Admin), false}
-  
+
   f := createBucketHandler(space)
   f(recorder, req)
 
@@ -155,7 +158,7 @@ func TestAdminListBuckets(t *testing.T) {
   admins["94099423"] = Admin{"xxx"}
 
   space := Space{"/tmp/mycroft-test2", make(map[string]Admin), false}
-  
+
   buckets := []string{}
   bucketId1, _ := space.CreateBucket()
   buckets = append(buckets, bucketId1)
@@ -171,5 +174,45 @@ func TestAdminListBuckets(t *testing.T) {
   body := recorder.Body.String()
   if body != expected_body {
     t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  }
+}
+
+func TestWriteItemHandler(t *testing.T) {
+  space := Space{"/tmp/mycroft-test3", make(map[string]Admin), false}
+
+  bucketId, _ := space.CreateBucket()
+
+  url := "http://example.com/data/" + bucketId
+
+  data := "my data"
+
+  recorder := httptest.NewRecorder()
+  req, err := http.NewRequest("POST", url, strings.NewReader(data))
+  if err != nil {
+    t.Errorf("Expected no error")
+  }
+
+  f := createItemHandler(space)
+  f(recorder, req, map[string]string{"bucket_id":bucketId})
+
+  expected_body := "{\"item_id\":\"579751929\",\"parent_id\":\"\"}\n"
+
+  body := recorder.Body.String()
+  if body != expected_body {
+    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  }
+
+  filePath := "/tmp/mycroft-test3/data/" + bucketId + "/579751929"
+
+  if _, err := os.Stat(filePath); err != nil {
+    t.Errorf("File '%v' should exist but doesn't", filePath)
+  }
+
+  expected_content := "{\"item_id\":\"579751929\",\"parent_id\":\"\",\"content\":\"" + data + "\"}"
+
+  content, _ := ioutil.ReadFile(filePath)
+  content_string := string(content)
+  if content_string != expected_content {
+    t.Errorf("Got content '%v', expected '%v'", content_string, expected_content)
   }
 }

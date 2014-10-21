@@ -145,6 +145,24 @@ func BasicAuth(pass handler, admins map[string]Admin) handler {
   }
 }
 
+func BasicAuthVars(pass VarsHandler, admins map[string]Admin) VarsHandler {
+  return func(w http.ResponseWriter, r *http.Request, vars map[string]string) {
+    username, password, err := ParseBasicAuthHeader(r.Header)
+
+    if err != nil {
+      http.Error(w, err.Error(), http.StatusBadRequest)
+      return
+    }
+
+    if password == "" || !ValidatePassword(username, password, admins) {
+      http.Error(w, "Authorization failed", http.StatusUnauthorized)
+      return
+    }
+
+    pass(w, r, vars)
+  }
+}
+
 func ValidatePassword(username, password string, admins map[string]Admin) bool {
   if admin, ok := admins[username]; ok {
     err := bcrypt.CompareHashAndPassword([]byte(admin.PasswordHash), []byte(password))
@@ -203,7 +221,7 @@ func (space Space) CreateBucket() (string, error) {
 
   bucketDirPath := filepath.Join(space.DataDirPath(), bucketId)
   err := os.MkdirAll(bucketDirPath, 0700)
-  
+
   return bucketId, err
 }
 
@@ -218,7 +236,52 @@ func createBucketHandler(space Space) handler {
     json_map := make(map[string]string)
     json_map["bucket_id"] = bucketId
     json, _ := json.Marshal(json_map)
-    
+
+    fmt.Fprintf(w, "%v\n", string(json[:]))
+  }
+  return fn
+}
+
+type Item struct {
+  ItemId string `json:"item_id"`
+  ParentId string `json:"parent_id"`
+  Content string `json:"content"`
+}
+
+func createItemHandler(space Space) VarsHandler {
+  fn := func(w http.ResponseWriter, r *http.Request, vars map[string]string) {
+    parentId := ""
+
+    bucketId := vars["bucket_id"]
+
+    itemId := strconv.Itoa(rand.Intn(1000000000))
+
+    itemFilePath := filepath.Join(space.DataDirPath(), bucketId, itemId)
+
+    body, err := ioutil.ReadAll(r.Body)
+    if err != nil {
+      http.Error(w, err.Error(), 500)
+      return
+    }
+
+    item := Item{itemId, parentId, string(body)}
+    json_item, err := json.Marshal(item)
+    if err != nil {
+      http.Error(w, err.Error(), 500)
+      return
+    }
+
+    err = ioutil.WriteFile(itemFilePath, json_item, 0600)
+    if err != nil {
+      http.Error(w, err.Error(), 500)
+      return
+    }
+
+    json_map := make(map[string]string)
+    json_map["item_id"] = itemId
+    json_map["parent_id"] = parentId
+    json, _ := json.Marshal(json_map)
+
     fmt.Fprintf(w, "%v\n", string(json[:]))
   }
   return fn
@@ -262,6 +325,7 @@ func main() {
   router.HandleFunc("/admin/clients", BasicAuth(adminClients(space.admins), space.admins)).Methods("GET")
   router.HandleFunc("/admin/buckets", BasicAuth(adminListBuckets(space), space.admins)).Methods("GET")
   router.HandleFunc("/data", BasicAuth(createBucketHandler(space), space.admins)).Methods("POST")
-  
+  router.Handle("/data/{bucket_id}", BasicAuthVars(VarsHandler(createItemHandler(space)), space.admins)).Methods("POST")
+
   http.ListenAndServe(":" + strconv.Itoa(port), router)
 }
