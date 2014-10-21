@@ -122,3 +122,23 @@ func TestAdminClients(t *testing.T) {
     t.Errorf("Expected body '%v', got '%v'", expected_body, body)
   }
 }
+
+func TestCreateBucket(t *testing.T) {
+  expected_body := "{\"bucket_id\":\"745640357\"}\n"
+
+  recorder := httptest.NewRecorder()
+  req, err := http.NewRequest("POST", "http://example.com/data", nil)
+  if err != nil {
+    t.Errorf("Expected no error")
+  }
+
+  space := Space{"/tmp/mycroft-test", make(map[string]Admin), false}
+  
+  f := createBucketHandler(space)
+  f(recorder, req)
+
+  body := recorder.Body.String()
+  if body != expected_body {
+    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  }
+}

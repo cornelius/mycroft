@@ -151,6 +151,10 @@ func (space Space) AdminFilePath() string {
   return filepath.Join(space.dir, "admins.json")
 }
 
+func (space Space) DataDirPath() string {
+  return filepath.Join(space.dir, "data")
+}
+
 func (space Space) WriteAdmins() {
   if space.persistent {
     jsonString, _ := json.Marshal(space.admins)
@@ -171,6 +175,26 @@ func (space Space) ReadAdmins() {
   if err != nil {
     fmt.Printf("Error unmarshaling admin JSON: %v\n", err.Error())
   }
+}
+
+func createBucketHandler(space Space) handler {
+  fn := func(w http.ResponseWriter, r *http.Request) {
+    bucketId := strconv.Itoa(rand.Intn(1000000000))
+
+    bucketDirPath := filepath.Join(space.DataDirPath(), bucketId)
+    err := os.MkdirAll(bucketDirPath, 0700)
+    if err != nil {
+      http.Error(w, err.Error(), 500)
+      return
+    }
+
+    json_map := make(map[string]string)
+    json_map["bucket_id"] = bucketId
+    json, _ := json.Marshal(json_map)
+    
+    fmt.Fprintf(w, "%v\n", string(json[:]))
+  }
+  return fn
 }
 
 func main() {
@@ -209,6 +233,7 @@ func main() {
   router.HandleFunc("/", rootHandler)
   router.Handle("/admin/register/{pid}", VarsHandler(adminRegisterHandler(pid, space))).Methods("POST")
   router.HandleFunc("/admin/clients", BasicAuth(adminClients(space.admins), space.admins)).Methods("GET")
-
+  router.HandleFunc("/data", BasicAuth(createBucketHandler(space), space.admins)).Methods("POST")
+  
   http.ListenAndServe(":" + strconv.Itoa(port), router)
 }
