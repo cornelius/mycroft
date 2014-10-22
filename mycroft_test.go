@@ -137,7 +137,9 @@ func TestCreateBucket(t *testing.T) {
     t.Errorf("Expected no error")
   }
 
-  space := Space{"/tmp/mycroft-test1", make(map[string]Admin), false}
+  testDir := "/tmp/mycroft-test1"
+  os.RemoveAll(testDir)
+  space := Space{testDir, make(map[string]Admin), false}
 
   f := createBucketHandler(space)
   f(recorder, req)
@@ -158,7 +160,9 @@ func TestAdminListBuckets(t *testing.T) {
   admins := make(map[string]Admin)
   admins["94099423"] = Admin{"xxx"}
 
-  space := Space{"/tmp/mycroft-test2", make(map[string]Admin), false}
+  testDir := "/tmp/mycroft-test2"
+  os.RemoveAll(testDir)
+  space := Space{testDir, make(map[string]Admin), false}
 
   buckets := []string{}
   bucketId1, _ := space.CreateBucket()
@@ -178,8 +182,11 @@ func TestAdminListBuckets(t *testing.T) {
   }
 }
 
-func TestWriteItemHandler(t *testing.T) {
-  space := Space{"/tmp/mycroft-test3", make(map[string]Admin), false}
+func TestWriteAndReadItems(t *testing.T) {
+  testDir := "/tmp/mycroft-test3"
+  os.RemoveAll(testDir)
+
+  space := Space{testDir, make(map[string]Admin), false}
 
   bucketId, _ := space.CreateBucket()
 
@@ -212,12 +219,12 @@ func TestWriteItemHandler(t *testing.T) {
     t.Errorf("File '%v' should exist but doesn't", filePath)
   }
 
-  expected_content := "{\"item_id\":\"" + expectedItemId + "\",\"parent_id\":\"\",\"content\":\"" + data + "\"}"
+  expectedContent1 := "{\"item_id\":\"" + expectedItemId + "\",\"parent_id\":\"\",\"content\":\"" + data + "\"}"
 
   content, _ := ioutil.ReadFile(filePath)
   content_string := string(content)
-  if content_string != expected_content {
-    t.Errorf("Got content '%v', expected '%v'", content_string, expected_content)
+  if content_string != expectedContent1 {
+    t.Errorf("Got content '%v', expected '%v'", content_string, expectedContent1)
   }
 
 
@@ -246,11 +253,28 @@ func TestWriteItemHandler(t *testing.T) {
     t.Errorf("File '%v' should exist but doesn't", filePath)
   }
 
-  expected_content = "{\"item_id\":\"" + expectedItemId2 + "\",\"parent_id\":\"" + expectedItemId + "\",\"content\":\"" + data2 + "\"}"
+  expectedContent2 := "{\"item_id\":\"" + expectedItemId2 + "\",\"parent_id\":\"" + expectedItemId + "\",\"content\":\"" + data2 + "\"}"
 
   content, _ = ioutil.ReadFile(filePath)
   content_string = string(content)
-  if content_string != expected_content {
-    t.Errorf("Got content '%v', expected '%v'", content_string, expected_content)
+  if content_string != expectedContent2 {
+    t.Errorf("Got content '%v', expected '%v'", content_string, expectedContent2)
+  }
+
+
+  recorder = httptest.NewRecorder()
+  req, err = http.NewRequest("GET", url, nil)
+  if err != nil {
+    t.Errorf("Expected no error")
+  }
+
+  f = readItemsHandler(space)
+  f(recorder, req, map[string]string{"bucket_id":bucketId})
+
+  expected_body = "[" + expectedContent2 + "," + expectedContent1 + "]\n"
+
+  body = recorder.Body.String()
+  if body != expected_body {
+    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
   }
 }

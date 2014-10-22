@@ -310,6 +310,63 @@ func createItemHandler(space Space) VarsHandler {
   return fn
 }
 
+func readItem(space Space, bucketId string, itemId string) (Item, error) {
+  itemFilePath := filepath.Join(space.DataDirPath(), bucketId, itemId)
+  itemContent, err := ioutil.ReadFile(itemFilePath)
+  if err != nil {
+    return Item{}, err
+  }
+
+  var item Item
+  err = json.Unmarshal(itemContent, &item)
+  if err != nil {
+    return Item{}, err
+  }
+
+  return item, nil
+}
+
+func readItemsHandler(space Space) VarsHandler {
+  fn := func(w http.ResponseWriter, r *http.Request, vars map[string]string) {
+    bucketId := vars["bucket_id"]
+
+    latestIdFilePath := filepath.Join(space.DataDirPath(), bucketId, "latest_id")
+
+    latestId := ""
+
+    if _, err := os.Stat(latestIdFilePath); err != nil {
+      http.Error(w, err.Error(), 500)
+      return
+    }
+    latestIdContent, err := ioutil.ReadFile(latestIdFilePath)
+    if err != nil {
+      http.Error(w, err.Error(), 500)
+      return
+    }
+    latestId = string(latestIdContent)
+
+    items := []Item{}
+
+    for latestId != "" {
+      item, err := readItem(space, bucketId, latestId)
+      if err != nil {
+        http.Error(w, err.Error(), 500)
+        return
+      }
+
+      items = append(items, item)
+
+      latestId = item.ParentId
+    }
+
+    json, _ := json.Marshal(items)
+
+    fmt.Fprintf(w, "%v\n", string(json[:]))
+  }
+  return fn
+}
+
+
 func main() {
   if len(os.Args) != 2 {
     fmt.Println("Usage: mycroft <directory>")
@@ -349,6 +406,7 @@ func main() {
   router.HandleFunc("/admin/buckets", BasicAuth(adminListBuckets(space), space.admins)).Methods("GET")
   router.HandleFunc("/data", BasicAuth(createBucketHandler(space), space.admins)).Methods("POST")
   router.Handle("/data/{bucket_id}", BasicAuthVars(VarsHandler(createItemHandler(space)), space.admins)).Methods("POST")
+  router.Handle("/data/{bucket_id}", BasicAuthVars(VarsHandler(readItemsHandler(space)), space.admins)).Methods("GET")
 
   http.ListenAndServe(":" + strconv.Itoa(port), router)
 }
