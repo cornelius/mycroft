@@ -250,9 +250,26 @@ type Item struct {
 
 func createItemHandler(space Space) VarsHandler {
   fn := func(w http.ResponseWriter, r *http.Request, vars map[string]string) {
+    bucketId := vars["bucket_id"]
+
+    latestIdFilePath := filepath.Join(space.DataDirPath(), bucketId, "latest_id")
+
     parentId := ""
 
-    bucketId := vars["bucket_id"]
+    if _, err := os.Stat(latestIdFilePath); err == nil {
+      latestIdContent, err := ioutil.ReadFile(latestIdFilePath)
+      if err != nil {
+        http.Error(w, err.Error(), 500)
+        return
+      }
+      parentId = string(latestIdContent)
+    } else {
+      if !os.IsNotExist(err) {
+        http.Error(w, err.Error(), 500)
+        return
+      }
+    }
+
 
     itemId := strconv.Itoa(rand.Intn(1000000000))
 
@@ -272,6 +289,12 @@ func createItemHandler(space Space) VarsHandler {
     }
 
     err = ioutil.WriteFile(itemFilePath, json_item, 0600)
+    if err != nil {
+      http.Error(w, err.Error(), 500)
+      return
+    }
+
+    err = ioutil.WriteFile(latestIdFilePath, []byte(itemId), 0600)
     if err != nil {
       http.Error(w, err.Error(), 500)
       return

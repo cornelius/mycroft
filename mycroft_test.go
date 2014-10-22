@@ -9,6 +9,7 @@ import (
   "os"
   "strings"
   "io/ioutil"
+  "path/filepath"
 )
 
 func TestCreateAdmin(t *testing.T) {
@@ -184,6 +185,7 @@ func TestWriteItemHandler(t *testing.T) {
 
   url := "http://example.com/data/" + bucketId
 
+  
   data := "my data"
 
   recorder := httptest.NewRecorder()
@@ -195,23 +197,59 @@ func TestWriteItemHandler(t *testing.T) {
   f := createItemHandler(space)
   f(recorder, req, map[string]string{"bucket_id":bucketId})
 
-  expected_body := "{\"item_id\":\"579751929\",\"parent_id\":\"\"}\n"
+  expectedItemId := "579751929"
+
+  expected_body := "{\"item_id\":\"" + expectedItemId + "\",\"parent_id\":\"\"}\n"
 
   body := recorder.Body.String()
   if body != expected_body {
     t.Errorf("Expected body '%v', got '%v'", expected_body, body)
   }
 
-  filePath := "/tmp/mycroft-test3/data/" + bucketId + "/579751929"
+  filePath := filepath.Join("/tmp/mycroft-test3/data", bucketId, expectedItemId)
 
   if _, err := os.Stat(filePath); err != nil {
     t.Errorf("File '%v' should exist but doesn't", filePath)
   }
 
-  expected_content := "{\"item_id\":\"579751929\",\"parent_id\":\"\",\"content\":\"" + data + "\"}"
+  expected_content := "{\"item_id\":\"" + expectedItemId + "\",\"parent_id\":\"\",\"content\":\"" + data + "\"}"
 
   content, _ := ioutil.ReadFile(filePath)
   content_string := string(content)
+  if content_string != expected_content {
+    t.Errorf("Got content '%v', expected '%v'", content_string, expected_content)
+  }
+
+
+  data2 := "more data"
+
+  recorder = httptest.NewRecorder()
+  req, err = http.NewRequest("POST", url, strings.NewReader(data2))
+  if err != nil {
+    t.Errorf("Expected no error")
+  }
+
+  expectedItemId2 := "468025967"
+
+  f(recorder, req, map[string]string{"bucket_id":bucketId})
+
+  expected_body = "{\"item_id\":\"" + expectedItemId2 + "\",\"parent_id\":\"" + expectedItemId + "\"}\n"
+
+  body = recorder.Body.String()
+  if body != expected_body {
+    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  }
+
+  filePath = filepath.Join("/tmp/mycroft-test3/data", bucketId, expectedItemId2)
+
+  if _, err = os.Stat(filePath); err != nil {
+    t.Errorf("File '%v' should exist but doesn't", filePath)
+  }
+
+  expected_content = "{\"item_id\":\"" + expectedItemId2 + "\",\"parent_id\":\"" + expectedItemId + "\",\"content\":\"" + data2 + "\"}"
+
+  content, _ = ioutil.ReadFile(filePath)
+  content_string = string(content)
   if content_string != expected_content {
     t.Errorf("Got content '%v', expected '%v'", content_string, expected_content)
   }
