@@ -37,7 +37,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 func adminRegisterHandler(pid int, space Space) VarsHandler {
   fn := func(w http.ResponseWriter, r *http.Request, vars map[string]string) {
     if len(space.admins) > 0 {
-      http.Error(w, "Error: Admin client already registered", 400)
+      http.Error(w, "Admin client already registered", 400)
       return
     }
     received_pid := vars["pid"]
