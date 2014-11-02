@@ -278,3 +278,83 @@ func TestWriteAndReadItems(t *testing.T) {
     t.Errorf("Expected body '%v', got '%v'", expected_body, body)
   }
 }
+
+func TestCreateToken(t *testing.T) {
+  expectedToken := "4666146214990"
+  expectedBody := "{\"token\":\"" + expectedToken + "\"}\n"
+
+  recorder := httptest.NewRecorder()
+  req, err := http.NewRequest("POST", "http://example.com/token", nil)
+  if err != nil {
+    t.Errorf("Expected no error")
+  }
+
+  testDir := "/tmp/mycroft-test1"
+  os.RemoveAll(testDir)
+  space := Space{testDir, make(map[string]Admin), false}
+
+  f := createTokenHandler(space)
+  f(recorder, req)
+
+  body := recorder.Body.String()
+  if body != expectedBody {
+    t.Errorf("Expected body '%v', got '%v'", expectedBody, body)
+  }
+
+  tokenPath := filepath.Join("/tmp/mycroft-test1/tokens", expectedToken)
+
+  if _, err := os.Stat(tokenPath); err != nil {
+    t.Errorf("File '%v' should exist but doesn't", tokenPath)
+  }
+}
+
+func TestAdminListTokens(t *testing.T) {
+  recorder := httptest.NewRecorder()
+  req, err := http.NewRequest("GET", "http://example.com/admin/tokens", nil)
+  if err != nil {
+    t.Errorf("Expected no error")
+  }
+
+  testDir := "/tmp/mycroft-test2"
+  os.RemoveAll(testDir)
+  space := Space{testDir, make(map[string]Admin), false}
+
+  tokens := []string{}
+  token1, _ := space.CreateToken()
+  tokens = append(tokens, token1)
+  token2, _ := space.CreateToken()
+  tokens = append(tokens, token2)
+  sort.Strings(tokens)
+
+  expected_body := "[\"" + tokens[0] + "\",\"" + tokens[1] + "\"]\n"
+
+  f := adminListTokens(space)
+  f(recorder, req)
+
+  body := recorder.Body.String()
+  if body != expected_body {
+    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  }
+}
+
+func TestAdminListTokensEmpty(t *testing.T) {
+  recorder := httptest.NewRecorder()
+  req, err := http.NewRequest("GET", "http://example.com/admin/tokens", nil)
+  if err != nil {
+    t.Errorf("Expected no error")
+  }
+
+  testDir := "/tmp/mycroft-test2"
+  os.RemoveAll(testDir)
+  space := Space{testDir, make(map[string]Admin), false}
+
+  expected_body := "[]\n"
+
+  f := adminListTokens(space)
+  f(recorder, req)
+
+  body := recorder.Body.String()
+  if body != expected_body {
+    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  }
+}

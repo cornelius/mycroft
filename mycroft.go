@@ -103,6 +103,32 @@ func adminListBuckets(space Space) handler {
   return fn
 }
 
+func adminListTokens(space Space) handler {
+  fn := func(w http.ResponseWriter, r *http.Request) {
+    tokens, err := ioutil.ReadDir(space.TokenDirPath())
+    if err != nil {
+      if os.IsNotExist(err) {
+        fmt.Fprintf(w, "[]\n")
+        return
+      } else {
+        http.Error(w, err.Error(), 500)
+        return
+      }
+    }
+    tokenList := []string{}
+    for i := range tokens {
+      tokenList = append(tokenList, tokens[i].Name())
+    }
+    json, err := json.Marshal(tokenList)
+    if err != nil {
+      http.Error(w, err.Error(), 500)
+      return
+    }
+    fmt.Fprintf(w, "%v\n", string(json[:]))
+  }
+  return fn
+}
+
 func ParseBasicAuthHeader(header http.Header) (username string, password string, err error) {
   authHeader, ok := header["Authorization"]
   if !ok {
@@ -194,6 +220,10 @@ func (space Space) DataDirPath() string {
   return filepath.Join(space.dir, "data")
 }
 
+func (space Space) TokenDirPath() string {
+  return filepath.Join(space.dir, "tokens")
+}
+
 func (space Space) WriteAdmins() {
   if space.persistent {
     jsonString, _ := json.Marshal(space.admins)
@@ -225,6 +255,20 @@ func (space Space) CreateBucket() (string, error) {
   return bucketId, err
 }
 
+func (space Space) CreateToken() (string, error) {
+  token := strconv.Itoa(rand.Intn(10000000000000))
+
+  err := os.MkdirAll(space.TokenDirPath(), 0700)
+  if err != nil {
+    return token, err
+  }
+
+  tokenFilePath := filepath.Join(space.TokenDirPath(), token)
+  err = ioutil.WriteFile(tokenFilePath, []byte(""), 0600)
+
+  return token, err
+}
+
 func createBucketHandler(space Space) handler {
   fn := func(w http.ResponseWriter, r *http.Request) {
     bucketId, err := space.CreateBucket()
@@ -235,6 +279,23 @@ func createBucketHandler(space Space) handler {
 
     json_map := make(map[string]string)
     json_map["bucket_id"] = bucketId
+    json, _ := json.Marshal(json_map)
+
+    fmt.Fprintf(w, "%v\n", string(json[:]))
+  }
+  return fn
+}
+
+func createTokenHandler(space Space) handler {
+  fn := func(w http.ResponseWriter, r *http.Request) {
+    token, err := space.CreateToken()
+    if err != nil {
+      http.Error(w, err.Error(), 500)
+      return
+    }
+
+    json_map := make(map[string]string)
+    json_map["token"] = token
     json, _ := json.Marshal(json_map)
 
     fmt.Fprintf(w, "%v\n", string(json[:]))
@@ -407,6 +468,8 @@ func main() {
   router.HandleFunc("/data", BasicAuth(createBucketHandler(space), space.admins)).Methods("POST")
   router.Handle("/data/{bucket_id}", BasicAuthVars(VarsHandler(createItemHandler(space)), space.admins)).Methods("POST")
   router.Handle("/data/{bucket_id}", BasicAuthVars(VarsHandler(readItemsHandler(space)), space.admins)).Methods("GET")
+  router.HandleFunc("/tokens", BasicAuth(createTokenHandler(space), space.admins)).Methods("POST")
+  router.HandleFunc("/admin/tokens", BasicAuth(adminListTokens(space), space.admins)).Methods("GET")
 
   http.ListenAndServe(":" + strconv.Itoa(port), router)
 }
