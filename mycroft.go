@@ -17,16 +17,16 @@ import (
   "io/ioutil"
 )
 
-type Admin struct {
+type User struct {
   PasswordHash string `json:"password_hash"`
 }
 
-func createAdmin() (id string, password_string string, admin Admin) {
+func createUser() (id string, password_string string, admin User) {
   id = strconv.Itoa(rand.Intn(1000000000))
   password_string = strconv.Itoa(rand.Intn(1000000000))
   password := []byte(password_string)
   passwordHash, _ := bcrypt.GenerateFromPassword(password, 10)
-  admin = Admin{string(passwordHash)}
+  admin = User{string(passwordHash)}
   return
 }
 
@@ -43,7 +43,7 @@ func adminRegisterHandler(pid int, space Space) VarsHandler {
     received_pid := vars["pid"]
     if received_pid == strconv.Itoa(pid) {
       fmt.Printf("Register admin client with pid %v\n", received_pid)
-      id, password, admin := createAdmin()
+      id, password, admin := createUser()
       space.admins[id] = admin
       space.WriteAdmins()
       json_map := map[string]string{
@@ -60,18 +60,58 @@ func adminRegisterHandler(pid int, space Space) VarsHandler {
   return fn
 }
 
-func adminsAsJson(admins map[string]Admin) (string, error) {
-  json_array := []string{}
-  for id := range admins {
-    json_array = append(json_array, id)
+func userRegisterHandler(space Space) VarsHandler {
+  fn := func(w http.ResponseWriter, r *http.Request, vars map[string]string) {
+    token := vars["token"]
+    tokenFilePath := filepath.Join(space.TokenDirPath(), token)
+    _, err := ioutil.ReadFile(tokenFilePath)
+    if err != nil {
+      if os.IsNotExist(err) {
+        http.Error(w, "Invalid token", 404)
+      } else {
+        http.Error(w, err.Error(), 500)
+      }
+      return
+    }
+
+    fmt.Printf("Register user client with token %v\n", token)
+    id, password, admin := createUser()
+    space.users[id] = admin
+    space.WriteUsers()
+    space.RemoveToken(token)
+    json_map := map[string]string{
+      "user_id": id,
+      "user_password": password,
+    }
+    json_string, _ := json.Marshal(json_map)
+    fmt.Fprintf(w, "%v\n", string(json_string))
   }
-  json, err := json.Marshal(json_array)
+  return fn
+}
+
+func adminsAsJson(admins map[string]User, users map[string]User) (string, error) {
+  json_hash := make(map[string][]string)
+
+  json_array1 := []string{}
+  for id := range admins {
+    json_array1 = append(json_array1, id)
+  }
+  json_hash["admins"] = json_array1
+
+  json_array2 := []string{}
+  for id := range users {
+    json_array2 = append(json_array2, id)
+  }
+  json_hash["users"] = json_array2
+
+  json, err := json.Marshal(json_hash)
+
   return string(json[:]), err
 }
 
-func adminClients(admins map[string]Admin) handler {
+func adminClients(admins map[string]User, users map[string]User) handler {
   fn := func(w http.ResponseWriter, r *http.Request) {
-    json, err := adminsAsJson(admins)
+    json, err := adminsAsJson(admins, users)
     if err != nil {
       http.Error(w, err.Error(), 500)
       return
@@ -153,7 +193,7 @@ func ParseBasicAuthHeader(header http.Header) (username string, password string,
 
 type handler func(w http.ResponseWriter, r *http.Request)
 
-func BasicAuth(pass handler, admins map[string]Admin) handler {
+func BasicAuth(pass handler, admins map[string]User) handler {
   return func(w http.ResponseWriter, r *http.Request) {
     username, password, err := ParseBasicAuthHeader(r.Header)
 
@@ -171,7 +211,7 @@ func BasicAuth(pass handler, admins map[string]Admin) handler {
   }
 }
 
-func BasicAuthVars(pass VarsHandler, admins map[string]Admin) VarsHandler {
+func BasicAuthVars(pass VarsHandler, admins map[string]User) VarsHandler {
   return func(w http.ResponseWriter, r *http.Request, vars map[string]string) {
     username, password, err := ParseBasicAuthHeader(r.Header)
 
@@ -189,7 +229,7 @@ func BasicAuthVars(pass VarsHandler, admins map[string]Admin) VarsHandler {
   }
 }
 
-func ValidatePassword(username, password string, admins map[string]Admin) bool {
+func ValidatePassword(username, password string, admins map[string]User) bool {
   if admin, ok := admins[username]; ok {
     err := bcrypt.CompareHashAndPassword([]byte(admin.PasswordHash), []byte(password))
     if err == nil {
@@ -208,12 +248,17 @@ func (h VarsHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 type Space struct {
   dir string
-  admins map[string]Admin
+  admins map[string]User
+  users map[string]User
   persistent bool
 }
 
 func (space Space) AdminFilePath() string {
   return filepath.Join(space.dir, "admins.json")
+}
+
+func (space Space) UserFilePath() string {
+  return filepath.Join(space.dir, "users.json")
 }
 
 func (space Space) DataDirPath() string {
@@ -234,6 +279,16 @@ func (space Space) WriteAdmins() {
   }
 }
 
+func (space Space) WriteUsers() {
+  if space.persistent {
+    jsonString, _ := json.Marshal(space.users)
+    err := ioutil.WriteFile(space.UserFilePath(), jsonString, 0600)
+    if err != nil {
+      fmt.Printf("Error writing users: %v\n", err.Error())
+    }
+  }
+}
+
 func (space Space) ReadAdmins() {
   jsonString, err := ioutil.ReadFile(space.AdminFilePath())
   if err != nil {
@@ -243,6 +298,18 @@ func (space Space) ReadAdmins() {
   err = json.Unmarshal(jsonString, &space.admins)
   if err != nil {
     fmt.Printf("Error unmarshaling admin JSON: %v\n", err.Error())
+  }
+}
+
+func (space Space) ReadUsers() {
+  jsonString, err := ioutil.ReadFile(space.UserFilePath())
+  if err != nil {
+    fmt.Printf("Error reading users: %v\n", err.Error())
+    os.Exit(1)
+  }
+  err = json.Unmarshal(jsonString, &space.users)
+  if err != nil {
+    fmt.Printf("Error unmarshaling user JSON: %v\n", err.Error())
   }
 }
 
@@ -267,6 +334,10 @@ func (space Space) CreateToken() (string, error) {
   err = ioutil.WriteFile(tokenFilePath, []byte(""), 0600)
 
   return token, err
+}
+
+func (space Space) RemoveToken(token string) error {
+  return os.Remove(filepath.Join(space.TokenDirPath(), token))
 }
 
 func createBucketHandler(space Space) handler {
@@ -434,10 +505,11 @@ func main() {
     os.Exit(1)
   }
   
-  space := Space{os.Args[1], make(map[string]Admin), true}
+  space := Space{os.Args[1], make(map[string]User), make(map[string]User), true}
   
   if _, err := os.Stat(space.AdminFilePath()); err == nil {
     space.ReadAdmins()
+    space.ReadUsers()
   } else {
     if os.IsNotExist(err) {
       err := os.MkdirAll(space.dir, 0700)
@@ -463,13 +535,14 @@ func main() {
   router := mux.NewRouter()
   router.HandleFunc("/", rootHandler)
   router.Handle("/admin/register/{pid}", VarsHandler(adminRegisterHandler(pid, space))).Methods("POST")
-  router.HandleFunc("/admin/clients", BasicAuth(adminClients(space.admins), space.admins)).Methods("GET")
+  router.HandleFunc("/admin/clients", BasicAuth(adminClients(space.admins, space.users), space.admins)).Methods("GET")
   router.HandleFunc("/admin/buckets", BasicAuth(adminListBuckets(space), space.admins)).Methods("GET")
   router.HandleFunc("/data", BasicAuth(createBucketHandler(space), space.admins)).Methods("POST")
   router.Handle("/data/{bucket_id}", BasicAuthVars(VarsHandler(createItemHandler(space)), space.admins)).Methods("POST")
   router.Handle("/data/{bucket_id}", BasicAuthVars(VarsHandler(readItemsHandler(space)), space.admins)).Methods("GET")
   router.HandleFunc("/tokens", BasicAuth(createTokenHandler(space), space.admins)).Methods("POST")
   router.HandleFunc("/admin/tokens", BasicAuth(adminListTokens(space), space.admins)).Methods("GET")
+  router.Handle("/register/{token}", VarsHandler(userRegisterHandler(space))).Methods("POST")
 
   http.ListenAndServe(":" + strconv.Itoa(port), router)
 }

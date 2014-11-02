@@ -10,33 +10,47 @@ import (
   "strings"
   "io/ioutil"
   "path/filepath"
+  "code.google.com/p/go.crypto/bcrypt"
 )
 
-func TestCreateAdmin(t *testing.T) {
+func createTestSpace() Space {
+  testDir := "/tmp/mycroft-test"
+  os.RemoveAll(testDir)
+  return Space{testDir, make(map[string]User), make(map[string]User), false}
+}
+
+func TestCreateUser(t *testing.T) {
   rand.Seed(42)
   expected_id := "801072305"
   expected_password := "141734987"
 
-  id, password, _ := createAdmin()
+  id, password, _ := createUser()
 
   if id != expected_id {
-    t.Errorf("createAdmin() = '%v, _', want '%v'", id, expected_id)
+    t.Errorf("createUser() = '%v, _', want '%v'", id, expected_id)
   }
   if password != expected_password {
-    t.Errorf("createAdmin() = '_, %v', want '%v'", password, expected_password)
+    t.Errorf("createUser() = '_, %v', want '%v'", password, expected_password)
   }
 }
 
 func TestAdminsAsJson(t *testing.T) {
-  var admins map[string]Admin
-  admins = make(map[string]Admin)
+  var admins map[string]User
+  admins = make(map[string]User)
 
-  id, _, admin := createAdmin()
+  id, _, admin := createUser()
   admin.PasswordHash = "$2a$10$36ZaYv02CY1PQxFiiuTtu.K6soUBCK330yLXwBvcaeREGfj.Bx/kC"
   admins[id] = admin
 
-  json_string, _ := adminsAsJson(admins)
-  expected_json_string := "[\"297281668\"]"
+  var users map[string]User
+  users = make(map[string]User)
+
+  id, _, user := createUser()
+  user.PasswordHash = "$2a$10$nzocaXSZD5OE.tcdOk//furws38CGiGnpw7NZWMprvp0xwGikya/S"
+  users[id] = user
+
+  json_string, _ := adminsAsJson(admins, users)
+  expected_json_string := "{\"admins\":[\"297281668\"],\"users\":[\"94099423\"]}"
 
   if json_string != expected_json_string {
     t.Errorf("adminsAsJson() = '%v', want '%v'", json_string, expected_json_string)
@@ -88,7 +102,9 @@ func TestAdminRoot(t *testing.T) {
 }
 
 func TestAdminRegister(t *testing.T) {
-  expected_body := "{\"admin_id\":\"94099423\",\"password\":\"822901345\"}\n"
+  rand.Seed(42)
+
+  expected_body := "{\"admin_id\":\"801072305\",\"password\":\"141734987\"}\n"
 
   recorder := httptest.NewRecorder()
   req, err := http.NewRequest("GET", "http://example.com/admin/register/1234", nil)
@@ -96,7 +112,7 @@ func TestAdminRegister(t *testing.T) {
     t.Errorf("Expected no error")
   }
 
-  space := Space{"/tmp/mycroft-test", make(map[string]Admin), false}
+  space := createTestSpace()
 
   f := adminRegisterHandler(1234, space)
   f(recorder, req, map[string]string{"pid":"1234"})
@@ -108,7 +124,7 @@ func TestAdminRegister(t *testing.T) {
 }
 
 func TestAdminClients(t *testing.T) {
-  expected_body := "[\"94099423\"]\n"
+  expected_body := "{\"admins\":[\"94099423\"],\"users\":[]}\n"
 
   recorder := httptest.NewRecorder()
   req, err := http.NewRequest("GET", "http://example.com/admin/clients", nil)
@@ -116,10 +132,12 @@ func TestAdminClients(t *testing.T) {
     t.Errorf("Expected no error")
   }
 
-  admins := make(map[string]Admin)
-  admins["94099423"] = Admin{"xxx"}
+  admins := make(map[string]User)
+  admins["94099423"] = User{"xxx"}
 
-  f := adminClients(admins)
+  users := make(map[string]User)
+
+  f := adminClients(admins, users)
   f(recorder, req)
 
   body := recorder.Body.String()
@@ -129,7 +147,9 @@ func TestAdminClients(t *testing.T) {
 }
 
 func TestCreateBucket(t *testing.T) {
-  expected_body := "{\"bucket_id\":\"745640357\"}\n"
+  rand.Seed(42)
+
+  expected_body := "{\"bucket_id\":\"801072305\"}\n"
 
   recorder := httptest.NewRecorder()
   req, err := http.NewRequest("POST", "http://example.com/data", nil)
@@ -137,9 +157,7 @@ func TestCreateBucket(t *testing.T) {
     t.Errorf("Expected no error")
   }
 
-  testDir := "/tmp/mycroft-test1"
-  os.RemoveAll(testDir)
-  space := Space{testDir, make(map[string]Admin), false}
+  space := createTestSpace()
 
   f := createBucketHandler(space)
   f(recorder, req)
@@ -157,12 +175,10 @@ func TestAdminListBuckets(t *testing.T) {
     t.Errorf("Expected no error")
   }
 
-  admins := make(map[string]Admin)
-  admins["94099423"] = Admin{"xxx"}
+  admins := make(map[string]User)
+  admins["94099423"] = User{"xxx"}
 
-  testDir := "/tmp/mycroft-test2"
-  os.RemoveAll(testDir)
-  space := Space{testDir, make(map[string]Admin), false}
+  space := createTestSpace()
 
   buckets := []string{}
   bucketId1, _ := space.CreateBucket()
@@ -183,10 +199,9 @@ func TestAdminListBuckets(t *testing.T) {
 }
 
 func TestWriteAndReadItems(t *testing.T) {
-  testDir := "/tmp/mycroft-test3"
-  os.RemoveAll(testDir)
+  rand.Seed(42)
 
-  space := Space{testDir, make(map[string]Admin), false}
+  space := createTestSpace()
 
   bucketId, _ := space.CreateBucket()
 
@@ -204,7 +219,7 @@ func TestWriteAndReadItems(t *testing.T) {
   f := createItemHandler(space)
   f(recorder, req, map[string]string{"bucket_id":bucketId})
 
-  expectedItemId := "579751929"
+  expectedItemId := "141734987"
 
   expected_body := "{\"item_id\":\"" + expectedItemId + "\",\"parent_id\":\"\"}\n"
 
@@ -213,7 +228,7 @@ func TestWriteAndReadItems(t *testing.T) {
     t.Errorf("Expected body '%v', got '%v'", expected_body, body)
   }
 
-  filePath := filepath.Join("/tmp/mycroft-test3/data", bucketId, expectedItemId)
+  filePath := filepath.Join(space.DataDirPath(), bucketId, expectedItemId)
 
   if _, err := os.Stat(filePath); err != nil {
     t.Errorf("File '%v' should exist but doesn't", filePath)
@@ -236,7 +251,7 @@ func TestWriteAndReadItems(t *testing.T) {
     t.Errorf("Expected no error")
   }
 
-  expectedItemId2 := "468025967"
+  expectedItemId2 := "297281668"
 
   f(recorder, req, map[string]string{"bucket_id":bucketId})
 
@@ -247,7 +262,7 @@ func TestWriteAndReadItems(t *testing.T) {
     t.Errorf("Expected body '%v', got '%v'", expected_body, body)
   }
 
-  filePath = filepath.Join("/tmp/mycroft-test3/data", bucketId, expectedItemId2)
+  filePath = filepath.Join(space.DataDirPath(), bucketId, expectedItemId2)
 
   if _, err = os.Stat(filePath); err != nil {
     t.Errorf("File '%v' should exist but doesn't", filePath)
@@ -280,7 +295,9 @@ func TestWriteAndReadItems(t *testing.T) {
 }
 
 func TestCreateToken(t *testing.T) {
-  expectedToken := "4666146214990"
+  rand.Seed(42)
+
+  expectedToken := "9354231278675"
   expectedBody := "{\"token\":\"" + expectedToken + "\"}\n"
 
   recorder := httptest.NewRecorder()
@@ -289,9 +306,7 @@ func TestCreateToken(t *testing.T) {
     t.Errorf("Expected no error")
   }
 
-  testDir := "/tmp/mycroft-test1"
-  os.RemoveAll(testDir)
-  space := Space{testDir, make(map[string]Admin), false}
+  space := createTestSpace()
 
   f := createTokenHandler(space)
   f(recorder, req)
@@ -301,7 +316,7 @@ func TestCreateToken(t *testing.T) {
     t.Errorf("Expected body '%v', got '%v'", expectedBody, body)
   }
 
-  tokenPath := filepath.Join("/tmp/mycroft-test1/tokens", expectedToken)
+  tokenPath := filepath.Join(space.TokenDirPath(), expectedToken)
 
   if _, err := os.Stat(tokenPath); err != nil {
     t.Errorf("File '%v' should exist but doesn't", tokenPath)
@@ -315,9 +330,7 @@ func TestAdminListTokens(t *testing.T) {
     t.Errorf("Expected no error")
   }
 
-  testDir := "/tmp/mycroft-test2"
-  os.RemoveAll(testDir)
-  space := Space{testDir, make(map[string]Admin), false}
+  space := createTestSpace()
 
   tokens := []string{}
   token1, _ := space.CreateToken()
@@ -344,13 +357,96 @@ func TestAdminListTokensEmpty(t *testing.T) {
     t.Errorf("Expected no error")
   }
 
-  testDir := "/tmp/mycroft-test2"
-  os.RemoveAll(testDir)
-  space := Space{testDir, make(map[string]Admin), false}
+  space := createTestSpace()
 
   expected_body := "[]\n"
 
   f := adminListTokens(space)
+  f(recorder, req)
+
+  body := recorder.Body.String()
+  if body != expected_body {
+    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  }
+}
+
+func TestUserRegister(t *testing.T) {
+  rand.Seed(42)
+
+  expectedUserId := "141734987"
+  expectedUserPassword := "297281668"
+  expected_body := "{\"user_id\":\"" + expectedUserId + "\",\"user_password\":\"" + expectedUserPassword + "\"}\n"
+
+  space := createTestSpace()
+  token, _ := space.CreateToken()
+
+  tokenPath := filepath.Join(space.TokenDirPath(), token)
+  if _, err := os.Stat(tokenPath); err != nil {
+    t.Errorf("File '%v' should exist but doesn't", tokenPath)
+  }
+
+
+  recorder := httptest.NewRecorder()
+  req, err := http.NewRequest("GET", "http://example.com/register/invalid_token", nil)
+  if err != nil {
+    t.Errorf("Expected no error")
+  }
+
+  f := userRegisterHandler(space)
+  f(recorder, req, map[string]string{"token":"invalid_token"})
+
+  expectedCode := 404
+  code := recorder.Code
+  if code != expectedCode {
+    t.Errorf("Expected response code '%v', got '%v'", expectedCode, code)
+  }
+
+
+  recorder = httptest.NewRecorder()
+  req, err = http.NewRequest("GET", "http://example.com/register/" + token, nil)
+  if err != nil {
+    t.Errorf("Expected no error")
+  }
+
+  f(recorder, req, map[string]string{"token":token})
+
+  expectedCode = 200
+  code = recorder.Code
+  if code != expectedCode {
+    t.Errorf("Expected response code '%v', got '%v'", expectedCode, code)
+  }
+
+  body := recorder.Body.String()
+  if body != expected_body {
+    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  }
+
+  if _, err := os.Stat(tokenPath); err == nil {
+    t.Errorf("File '%v' should not exist but does", tokenPath)
+  }
+
+  userPasswordHash := space.users[expectedUserId].PasswordHash
+  err = bcrypt.CompareHashAndPassword([]byte(userPasswordHash), []byte(expectedUserPassword))
+  if err != nil {
+    t.Errorf("Expected user '%v' with password '%v' and hash '%v', didn't match", expectedUserId, expectedUserPassword, userPasswordHash)
+  }
+}
+
+func TestUserClients(t *testing.T) {
+  expected_body := "{\"admins\":[],\"users\":[\"94099423\"]}\n"
+
+  recorder := httptest.NewRecorder()
+  req, err := http.NewRequest("GET", "http://example.com/admin/clients", nil)
+  if err != nil {
+    t.Errorf("Expected no error")
+  }
+
+  admins := make(map[string]User)
+
+  users := make(map[string]User)
+  users["94099423"] = User{"xxx"}
+
+  f := adminClients(admins, users)
   f(recorder, req)
 
   body := recorder.Body.String()
