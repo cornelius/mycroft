@@ -309,8 +309,12 @@ func (space Space) ReadAdmins() {
 func (space Space) ReadUsers() {
   jsonString, err := ioutil.ReadFile(space.UserFilePath())
   if err != nil {
-    fmt.Printf("Error reading users: %v\n", err.Error())
-    os.Exit(1)
+    if os.IsNotExist(err) {
+      return
+    } else {
+      fmt.Printf("Error reading users: %v\n", err.Error())
+      os.Exit(1)
+    }
   }
   err = json.Unmarshal(jsonString, &space.users)
   if err != nil {

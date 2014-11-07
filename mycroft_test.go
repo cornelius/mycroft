@@ -57,6 +57,13 @@ func TestAdminsAsJson(t *testing.T) {
   }
 }
 
+func TestReadUsers(t *testing.T) {
+  space := createTestSpace()
+
+  // Should not fail
+  space.ReadUsers()
+}
+
 func TestBasicAuth(t *testing.T) {
   header2 := make(map[string][]string)
   header2["User-Agent"] = []string{"curl/7.32.0"}
