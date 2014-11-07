@@ -235,22 +235,39 @@ func TestWriteAndReadItems(t *testing.T) {
   url := "http://example.com/data/" + bucketId
 
   
-  data := "my data"
-
   recorder := httptest.NewRecorder()
-  req, err := http.NewRequest("POST", url, strings.NewReader(data))
+  req, err := http.NewRequest("GET", url, nil)
   if err != nil {
     t.Errorf("Expected no error")
   }
 
-  f := createItemHandler(space)
+  f := readItemsHandler(space)
+  f(recorder, req, map[string]string{"bucket_id":bucketId})
+
+  expected_body := "[]\n"
+
+  body := recorder.Body.String()
+  if body != expected_body {
+    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  }
+
+
+  data := "my data"
+
+  recorder = httptest.NewRecorder()
+  req, err = http.NewRequest("POST", url, strings.NewReader(data))
+  if err != nil {
+    t.Errorf("Expected no error")
+  }
+
+  f = createItemHandler(space)
   f(recorder, req, map[string]string{"bucket_id":bucketId})
 
   expectedItemId := "141734987"
 
-  expected_body := "{\"item_id\":\"" + expectedItemId + "\",\"parent_id\":\"\"}\n"
+  expected_body = "{\"item_id\":\"" + expectedItemId + "\",\"parent_id\":\"\"}\n"
 
-  body := recorder.Body.String()
+  body = recorder.Body.String()
   if body != expected_body {
     t.Errorf("Expected body '%v', got '%v'", expected_body, body)
   }

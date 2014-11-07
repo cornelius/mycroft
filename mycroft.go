@@ -489,8 +489,13 @@ func readItemsHandler(space Space) VarsHandler {
     latestId := ""
 
     if _, err := os.Stat(latestIdFilePath); err != nil {
-      http.Error(w, err.Error(), 500)
-      return
+      if os.IsNotExist(err) {
+        fmt.Fprintf(w, "[]\n")
+        return
+      } else {
+        http.Error(w, err.Error(), 500)
+        return
+      }
     }
     latestIdContent, err := ioutil.ReadFile(latestIdFilePath)
     if err != nil {
