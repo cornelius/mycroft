@@ -481,3 +481,27 @@ func TestUserClients(t *testing.T) {
     t.Errorf("Expected body '%v', got '%v'", expected_body, body)
   }
 }
+
+func TestMergeUserArrays(t *testing.T) {
+  admins := make(map[string]User)
+  admins["94088423"] = User{"yyy"}
+
+  users := make(map[string]User)
+  users["94099423"] = User{"xxx"}
+
+  allUsers := mergeUsers(admins, users)
+
+  if allUsers["94088423"].PasswordHash != "yyy" {
+    t.Errorf("Didn't find admin user")
+  }
+  if allUsers["94099423"].PasswordHash != "xxx" {
+    t.Errorf("Didn't find user user")
+  }
+
+  if admins["94099423"].PasswordHash == "xxx" {
+    t.Errorf("Shouldn't alter original map")
+  }
+  if users["94088423"].PasswordHash == "yyy" {
+    t.Errorf("Shouldn't alter original map")
+  }
+}

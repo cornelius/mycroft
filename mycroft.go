@@ -30,6 +30,19 @@ func createUser() (id string, password_string string, admin User) {
   return
 }
 
+func mergeUsers(users1 map[string]User, users2 map[string]User) map[string]User {
+  allUsers := make(map[string]User)
+
+  for key, value := range users1 {
+    allUsers[key] = value
+  }
+  for key, value := range users2 {
+    allUsers[key] = value
+  }
+
+  return allUsers
+}
+
 func rootHandler(w http.ResponseWriter, r *http.Request) {
   fmt.Fprintf(w, "hello\n")
 }
@@ -546,10 +559,10 @@ func main() {
   router.Handle("/admin/register/{pid}", VarsHandler(adminRegisterHandler(pid, space))).Methods("POST")
   router.HandleFunc("/admin/clients", BasicAuth(adminClients(space.admins, space.users), space.admins)).Methods("GET")
   router.HandleFunc("/admin/buckets", BasicAuth(adminListBuckets(space), space.admins)).Methods("GET")
-  router.HandleFunc("/data", BasicAuth(createBucketHandler(space), space.admins)).Methods("POST")
-  router.Handle("/data/{bucket_id}", BasicAuthVars(VarsHandler(createItemHandler(space)), space.admins)).Methods("POST")
-  router.Handle("/data/{bucket_id}", BasicAuthVars(VarsHandler(readItemsHandler(space)), space.admins)).Methods("GET")
-  router.HandleFunc("/tokens", BasicAuth(createTokenHandler(space), space.admins)).Methods("POST")
+  router.HandleFunc("/data", BasicAuth(createBucketHandler(space), space.users)).Methods("POST")
+  router.Handle("/data/{bucket_id}", BasicAuthVars(VarsHandler(createItemHandler(space)), space.users)).Methods("POST")
+  router.Handle("/data/{bucket_id}", BasicAuthVars(VarsHandler(readItemsHandler(space)), space.users)).Methods("GET")
+  router.HandleFunc("/tokens", BasicAuth(createTokenHandler(space), mergeUsers(space.admins, space.users))).Methods("POST")
   router.HandleFunc("/admin/tokens", BasicAuth(adminListTokens(space), space.admins)).Methods("GET")
   router.Handle("/register/{token}", VarsHandler(userRegisterHandler(space))).Methods("POST")
 
