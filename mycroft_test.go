@@ -198,6 +198,26 @@ func TestAdminListBuckets(t *testing.T) {
   }
 }
 
+func TestAdminListBucketsEmpty(t *testing.T) {
+  recorder := httptest.NewRecorder()
+  req, err := http.NewRequest("GET", "http://example.com/admin/buckets", nil)
+  if err != nil {
+    t.Errorf("Expected no error")
+  }
+
+  space := createTestSpace()
+
+  expected_body := "[]\n"
+
+  f := adminListBuckets(space)
+  f(recorder, req)
+
+  body := recorder.Body.String()
+  if body != expected_body {
+    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  }
+}
+
 func TestWriteAndReadItems(t *testing.T) {
   rand.Seed(42)
 

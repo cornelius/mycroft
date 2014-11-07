@@ -126,8 +126,13 @@ func adminListBuckets(space Space) handler {
   fn := func(w http.ResponseWriter, r *http.Request) {
     buckets, err := ioutil.ReadDir(space.DataDirPath())
     if err != nil {
-      http.Error(w, err.Error(), 500)
-      return
+      if os.IsNotExist(err) {
+        fmt.Fprintf(w, "[]\n")
+        return
+      } else {
+        http.Error(w, err.Error(), 500)
+        return
+      }
     }
     bucketList := []string{}
     for i := range buckets {
