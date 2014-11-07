@@ -193,7 +193,7 @@ func ParseBasicAuthHeader(header http.Header) (username string, password string,
 
 type handler func(w http.ResponseWriter, r *http.Request)
 
-func BasicAuth(pass handler, admins map[string]User) handler {
+func BasicAuth(pass handler, users map[string]User) handler {
   return func(w http.ResponseWriter, r *http.Request) {
     username, password, err := ParseBasicAuthHeader(r.Header)
 
@@ -202,7 +202,7 @@ func BasicAuth(pass handler, admins map[string]User) handler {
       return
     }
 
-    if password == "" || !ValidatePassword(username, password, admins) {
+    if password == "" || !ValidatePassword(username, password, users) {
       http.Error(w, "Authorization failed", http.StatusUnauthorized)
       return
     }
@@ -211,7 +211,7 @@ func BasicAuth(pass handler, admins map[string]User) handler {
   }
 }
 
-func BasicAuthVars(pass VarsHandler, admins map[string]User) VarsHandler {
+func BasicAuthVars(pass VarsHandler, users map[string]User) VarsHandler {
   return func(w http.ResponseWriter, r *http.Request, vars map[string]string) {
     username, password, err := ParseBasicAuthHeader(r.Header)
 
@@ -220,7 +220,7 @@ func BasicAuthVars(pass VarsHandler, admins map[string]User) VarsHandler {
       return
     }
 
-    if password == "" || !ValidatePassword(username, password, admins) {
+    if password == "" || !ValidatePassword(username, password, users) {
       http.Error(w, "Authorization failed", http.StatusUnauthorized)
       return
     }
@@ -229,8 +229,8 @@ func BasicAuthVars(pass VarsHandler, admins map[string]User) VarsHandler {
   }
 }
 
-func ValidatePassword(username, password string, admins map[string]User) bool {
-  if admin, ok := admins[username]; ok {
+func ValidatePassword(username, password string, users map[string]User) bool {
+  if admin, ok := users[username]; ok {
     err := bcrypt.CompareHashAndPassword([]byte(admin.PasswordHash), []byte(password))
     if err == nil {
       return true
