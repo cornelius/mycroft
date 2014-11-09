@@ -91,6 +91,45 @@ func TestBasicAuth(t *testing.T) {
   }
 }
 
+func TestValidatePassword(t *testing.T) {
+  user := "somename"
+  password := "somepassword"
+
+  users := make(map[string]User)
+  hash, _ := bcrypt.GenerateFromPassword([]byte(password), 10)
+  users[user] = User{string(hash)}
+
+  lookup := func(username string) (User, bool) {
+    user, ok := users[username]
+    return user, ok
+  }
+
+  valid := ValidatePassword(user, password, lookup)
+  if !valid {
+    t.Errorf("ValidatePassword('%v', '%v', '%v') didn't match, but should", user, password, users)
+  }
+  valid = ValidatePassword(user, "wrongpassword", lookup)
+  if valid {
+    t.Errorf("ValidatePassword('%v', 'wrongpassword', '%v') matched, but shouldn't", user, users)
+  }
+
+  user2 := "anothername"
+  password2 := "anotherpassword"
+
+  valid = ValidatePassword(user2, password2, lookup)
+  if valid {
+    t.Errorf("ValidatePassword('%v', '%v', '%v') matched, but shouldn't", user2, password2, users)
+  }
+
+  hash, _ = bcrypt.GenerateFromPassword([]byte(password2), 10)
+  users[user2] = User{string(hash)}
+
+  valid = ValidatePassword(user2, password2, lookup)
+  if !valid {
+    t.Errorf("ValidatePassword('%v', '%v', '%v') didn't match, but should", user2, password2, users)
+  }
+}
+
 func TestAdminRoot(t *testing.T) {
   expected_body := "hello\n"
 
@@ -496,29 +535,5 @@ func TestUserClients(t *testing.T) {
   body := recorder.Body.String()
   if body != expected_body {
     t.Errorf("Expected body '%v', got '%v'", expected_body, body)
-  }
-}
-
-func TestMergeUserArrays(t *testing.T) {
-  admins := make(map[string]User)
-  admins["94088423"] = User{"yyy"}
-
-  users := make(map[string]User)
-  users["94099423"] = User{"xxx"}
-
-  allUsers := mergeUsers(admins, users)
-
-  if allUsers["94088423"].PasswordHash != "yyy" {
-    t.Errorf("Didn't find admin user")
-  }
-  if allUsers["94099423"].PasswordHash != "xxx" {
-    t.Errorf("Didn't find user user")
-  }
-
-  if admins["94099423"].PasswordHash == "xxx" {
-    t.Errorf("Shouldn't alter original map")
-  }
-  if users["94088423"].PasswordHash == "yyy" {
-    t.Errorf("Shouldn't alter original map")
   }
 }

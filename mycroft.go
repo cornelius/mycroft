@@ -30,19 +30,6 @@ func createUser() (id string, password_string string, admin User) {
   return
 }
 
-func mergeUsers(users1 map[string]User, users2 map[string]User) map[string]User {
-  allUsers := make(map[string]User)
-
-  for key, value := range users1 {
-    allUsers[key] = value
-  }
-  for key, value := range users2 {
-    allUsers[key] = value
-  }
-
-  return allUsers
-}
-
 func rootHandler(w http.ResponseWriter, r *http.Request) {
   fmt.Fprintf(w, "hello\n")
 }
@@ -211,7 +198,7 @@ func ParseBasicAuthHeader(header http.Header) (username string, password string,
 
 type handler func(w http.ResponseWriter, r *http.Request)
 
-func BasicAuth(pass handler, users map[string]User) handler {
+func BasicAuth(pass handler, lookup func(string) (User, bool)) handler {
   return func(w http.ResponseWriter, r *http.Request) {
     username, password, err := ParseBasicAuthHeader(r.Header)
 
@@ -220,7 +207,7 @@ func BasicAuth(pass handler, users map[string]User) handler {
       return
     }
 
-    if password == "" || !ValidatePassword(username, password, users) {
+    if password == "" || !ValidatePassword(username, password, lookup) {
       http.Error(w, "Authorization failed", http.StatusUnauthorized)
       return
     }
@@ -229,7 +216,7 @@ func BasicAuth(pass handler, users map[string]User) handler {
   }
 }
 
-func BasicAuthVars(pass VarsHandler, users map[string]User) VarsHandler {
+func BasicAuthVars(pass VarsHandler, lookup func(string) (User, bool)) VarsHandler {
   return func(w http.ResponseWriter, r *http.Request, vars map[string]string) {
     username, password, err := ParseBasicAuthHeader(r.Header)
 
@@ -238,7 +225,7 @@ func BasicAuthVars(pass VarsHandler, users map[string]User) VarsHandler {
       return
     }
 
-    if password == "" || !ValidatePassword(username, password, users) {
+    if password == "" || !ValidatePassword(username, password, lookup) {
       http.Error(w, "Authorization failed", http.StatusUnauthorized)
       return
     }
@@ -247,8 +234,8 @@ func BasicAuthVars(pass VarsHandler, users map[string]User) VarsHandler {
   }
 }
 
-func ValidatePassword(username, password string, users map[string]User) bool {
-  if admin, ok := users[username]; ok {
+func ValidatePassword(username, password string, lookup func(string) (User, bool)) bool {
+  if admin, ok := lookup(username); ok {
     err := bcrypt.CompareHashAndPassword([]byte(admin.PasswordHash), []byte(password))
     if err == nil {
       return true
@@ -559,16 +546,35 @@ func main() {
     fmt.Printf("To register the admin client send a POST to http://<servername>:%v/admin/register/%v\n", port, pid)
   }
 
+  lookupUser := func(username string) (User, bool) {
+    user, ok := space.users[username]
+    return user, ok
+  }
+
+  lookupAdmin := func(username string) (User, bool) {
+    user, ok := space.admins[username]
+    return user, ok
+  }
+
+  lookupAny := func(username string) (User, bool) {
+    user, ok := space.users[username]
+    if ok {
+      return user, ok
+    }
+    user, ok = space.admins[username]
+    return user, ok
+  }
+
   router := mux.NewRouter()
   router.HandleFunc("/", rootHandler)
   router.Handle("/admin/register/{pid}", VarsHandler(adminRegisterHandler(pid, space))).Methods("POST")
-  router.HandleFunc("/admin/clients", BasicAuth(adminClients(space.admins, space.users), space.admins)).Methods("GET")
-  router.HandleFunc("/admin/buckets", BasicAuth(adminListBuckets(space), space.admins)).Methods("GET")
-  router.HandleFunc("/data", BasicAuth(createBucketHandler(space), space.users)).Methods("POST")
-  router.Handle("/data/{bucket_id}", BasicAuthVars(VarsHandler(createItemHandler(space)), space.users)).Methods("POST")
-  router.Handle("/data/{bucket_id}", BasicAuthVars(VarsHandler(readItemsHandler(space)), space.users)).Methods("GET")
-  router.HandleFunc("/tokens", BasicAuth(createTokenHandler(space), mergeUsers(space.admins, space.users))).Methods("POST")
-  router.HandleFunc("/admin/tokens", BasicAuth(adminListTokens(space), space.admins)).Methods("GET")
+  router.HandleFunc("/admin/clients", BasicAuth(adminClients(space.admins, space.users), lookupAdmin)).Methods("GET")
+  router.HandleFunc("/admin/buckets", BasicAuth(adminListBuckets(space), lookupAdmin)).Methods("GET")
+  router.HandleFunc("/data", BasicAuth(createBucketHandler(space), lookupUser)).Methods("POST")
+  router.Handle("/data/{bucket_id}", BasicAuthVars(VarsHandler(createItemHandler(space)), lookupUser)).Methods("POST")
+  router.Handle("/data/{bucket_id}", BasicAuthVars(VarsHandler(readItemsHandler(space)), lookupUser)).Methods("GET")
+  router.HandleFunc("/tokens", BasicAuth(createTokenHandler(space), lookupAny)).Methods("POST")
+  router.HandleFunc("/admin/tokens", BasicAuth(adminListTokens(space), lookupAdmin)).Methods("GET")
   router.Handle("/register/{token}", VarsHandler(userRegisterHandler(space))).Methods("POST")
 
   http.ListenAndServe(":" + strconv.Itoa(port), router)
