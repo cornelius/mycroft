@@ -235,8 +235,8 @@ func BasicAuthVars(pass VarsHandler, lookup func(string) (User, bool)) VarsHandl
 }
 
 func ValidatePassword(username, password string, lookup func(string) (User, bool)) bool {
-  if admin, ok := lookup(username); ok {
-    err := bcrypt.CompareHashAndPassword([]byte(admin.PasswordHash), []byte(password))
+  if user, ok := lookup(username); ok {
+    err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
     if err == nil {
       return true
     }
