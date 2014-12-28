@@ -21,9 +21,19 @@ type User struct {
   PasswordHash string `json:"password_hash"`
 }
 
+func CreateRandomString(size int) string {
+  letters := "0123456789abcdefghijklmnopqrstuvwxyz"
+
+  var bytes = make([]byte, size)
+  for i := 0; i < size; i += 1 {
+    bytes[i] = letters[rand.Intn(len(letters))]
+  }
+  return string(bytes)
+}
+
 func createUser() (id string, password_string string, admin User) {
-  id = strconv.Itoa(rand.Intn(1000000000))
-  password_string = strconv.Itoa(rand.Intn(1000000000))
+  id = CreateRandomString(10)
+  password_string = CreateRandomString(10)
   password := []byte(password_string)
   passwordHash, _ := bcrypt.GenerateFromPassword(password, 10)
   admin = User{string(passwordHash)}
@@ -34,14 +44,14 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
   fmt.Fprintf(w, "hello\n")
 }
 
-func adminRegisterHandler(pid int, space Space) VarsHandler {
+func adminRegisterHandler(pid string, space Space) VarsHandler {
   fn := func(w http.ResponseWriter, r *http.Request, vars map[string]string) {
     if len(space.admins) > 0 {
       http.Error(w, "Admin client already registered", 400)
       return
     }
     received_pid := vars["pid"]
-    if received_pid == strconv.Itoa(pid) {
+    if received_pid == pid {
       fmt.Printf("Register admin client with pid %v\n", received_pid)
       id, password, admin := createUser()
       space.admins[id] = admin
@@ -323,7 +333,7 @@ func (space Space) ReadUsers() {
 }
 
 func (space Space) CreateBucket() (string, error) {
-  bucketId := strconv.Itoa(rand.Intn(1000000000))
+  bucketId := CreateRandomString(10)
 
   bucketDirPath := filepath.Join(space.DataDirPath(), bucketId)
   err := os.MkdirAll(bucketDirPath, 0700)
@@ -332,7 +342,7 @@ func (space Space) CreateBucket() (string, error) {
 }
 
 func (space Space) CreateToken() (string, error) {
-  token := strconv.Itoa(rand.Intn(10000000000000))
+  token := CreateRandomString(16)
 
   err := os.MkdirAll(space.TokenDirPath(), 0700)
   if err != nil {
@@ -412,7 +422,7 @@ func createItemHandler(space Space) VarsHandler {
     }
 
 
-    itemId := strconv.Itoa(rand.Intn(1000000000))
+    itemId := CreateRandomString(10)
 
     itemFilePath := filepath.Join(space.DataDirPath(), bucketId, itemId)
 
@@ -538,7 +548,7 @@ func main() {
   
   rand.Seed(time.Now().UnixNano())
 
-  pid := rand.Intn(10000)
+  pid := CreateRandomString(4)
 
   port := 4735
 

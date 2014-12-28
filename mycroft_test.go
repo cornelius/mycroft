@@ -21,8 +21,8 @@ func createTestSpace() Space {
 
 func TestCreateUser(t *testing.T) {
   rand.Seed(42)
-  expected_id := "801072305"
-  expected_password := "141734987"
+  expected_id := "hzwuvpx8k7"
+  expected_password := "1b34w985zk"
 
   id, password, _ := createUser()
 
@@ -38,19 +38,19 @@ func TestAdminsAsJson(t *testing.T) {
   var admins map[string]User
   admins = make(map[string]User)
 
-  id, _, admin := createUser()
+  adminId, _, admin := createUser()
   admin.PasswordHash = "$2a$10$36ZaYv02CY1PQxFiiuTtu.K6soUBCK330yLXwBvcaeREGfj.Bx/kC"
-  admins[id] = admin
+  admins[adminId] = admin
 
   var users map[string]User
   users = make(map[string]User)
 
-  id, _, user := createUser()
+  userId, _, user := createUser()
   user.PasswordHash = "$2a$10$nzocaXSZD5OE.tcdOk//furws38CGiGnpw7NZWMprvp0xwGikya/S"
-  users[id] = user
+  users[userId] = user
 
   json_string, _ := adminsAsJson(admins, users)
-  expected_json_string := "{\"admins\":[\"297281668\"],\"users\":[\"94099423\"]}"
+  expected_json_string := "{\"admins\":[\"" + adminId + "\"],\"users\":[\"" + userId + "\"]}"
 
   if json_string != expected_json_string {
     t.Errorf("adminsAsJson() = '%v', want '%v'", json_string, expected_json_string)
@@ -150,7 +150,7 @@ func TestAdminRoot(t *testing.T) {
 func TestAdminRegister(t *testing.T) {
   rand.Seed(42)
 
-  expected_body := "{\"admin_id\":\"801072305\",\"password\":\"141734987\"}\n"
+  expected_body := "{\"admin_id\":\"hzwuvpx8k7\",\"password\":\"1b34w985zk\"}\n"
 
   recorder := httptest.NewRecorder()
   req, err := http.NewRequest("GET", "http://example.com/admin/register/1234", nil)
@@ -160,7 +160,7 @@ func TestAdminRegister(t *testing.T) {
 
   space := createTestSpace()
 
-  f := adminRegisterHandler(1234, space)
+  f := adminRegisterHandler("1234", space)
   f(recorder, req, map[string]string{"pid":"1234"})
 
   body := recorder.Body.String()
@@ -195,7 +195,7 @@ func TestAdminClients(t *testing.T) {
 func TestCreateBucket(t *testing.T) {
   rand.Seed(42)
 
-  expected_body := "{\"bucket_id\":\"801072305\"}\n"
+  expected_body := "{\"bucket_id\":\"hzwuvpx8k7\"}\n"
 
   recorder := httptest.NewRecorder()
   req, err := http.NewRequest("POST", "http://example.com/data", nil)
@@ -302,7 +302,7 @@ func TestWriteAndReadItems(t *testing.T) {
   f = createItemHandler(space)
   f(recorder, req, map[string]string{"bucket_id":bucketId})
 
-  expectedItemId := "141734987"
+  expectedItemId := "1b34w985zk"
 
   expected_body = "{\"item_id\":\"" + expectedItemId + "\",\"parent_id\":\"\"}\n"
 
@@ -334,7 +334,7 @@ func TestWriteAndReadItems(t *testing.T) {
     t.Errorf("Expected no error")
   }
 
-  expectedItemId2 := "297281668"
+  expectedItemId2 := "y6srghejvb"
 
   f(recorder, req, map[string]string{"bucket_id":bucketId})
 
@@ -380,7 +380,7 @@ func TestWriteAndReadItems(t *testing.T) {
 func TestCreateToken(t *testing.T) {
   rand.Seed(42)
 
-  expectedToken := "9354231278675"
+  expectedToken := "hzwuvpx8k71b34w9"
   expectedBody := "{\"token\":\"" + expectedToken + "\"}\n"
 
   recorder := httptest.NewRecorder()
@@ -456,8 +456,8 @@ func TestAdminListTokensEmpty(t *testing.T) {
 func TestUserRegister(t *testing.T) {
   rand.Seed(42)
 
-  expectedUserId := "141734987"
-  expectedUserPassword := "297281668"
+  expectedUserId := "85zky6srgh"
+  expectedUserPassword := "ejvbievihm"
   expected_body := "{\"user_id\":\"" + expectedUserId + "\",\"user_password\":\"" + expectedUserPassword + "\"}\n"
 
   space := createTestSpace()
@@ -535,5 +535,26 @@ func TestUserClients(t *testing.T) {
   body := recorder.Body.String()
   if body != expected_body {
     t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  }
+}
+
+func TestCreateRandomString(t *testing.T) {
+  rand.Seed(42)
+
+  expectedRandomString := "hzwuvpx8k7"
+
+  randomString := CreateRandomString(10)
+
+  if randomString != expectedRandomString {
+    t.Errorf("Expected '%v', got '%v'", expectedRandomString, randomString)
+  }
+
+
+  expectedRandomString = "1b34w985zky6srgh"
+
+  randomString = CreateRandomString(16)
+
+  if randomString != expectedRandomString {
+    t.Errorf("Expected '%v', got '%v'", expectedRandomString, randomString)
   }
 }
