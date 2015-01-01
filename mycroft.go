@@ -16,6 +16,7 @@ import (
   "errors"
   "path/filepath"
   "io/ioutil"
+  "flag"
 )
 
 type User struct {
@@ -525,7 +526,15 @@ func readItemsHandler(space Space) VarsHandler {
 
 
 func main() {
-  if len(os.Args) != 2 {
+  var logPath string
+
+  flag.StringVar(&logPath, "logfile", "mycroft-access.log", "Path to log file")
+
+  flag.Parse()
+
+  fmt.Printf("ARGS: %v", flag.Args())
+
+  if len(flag.Args()) != 1 {
     fmt.Println("Usage: mycroft <directory>")
     os.Exit(1)
   }
@@ -588,5 +597,11 @@ func main() {
   router.HandleFunc("/admin/tokens", BasicAuth(adminListTokens(space), lookupAdmin)).Methods("GET")
   router.Handle("/register/{token}", VarsHandler(userRegisterHandler(space))).Methods("POST")
 
-  http.ListenAndServe(":" + strconv.Itoa(port), handlers.CombinedLoggingHandler(os.Stdout, router))
+  logFile, err := os.OpenFile(logPath, os.O_WRONLY | os.O_CREATE | os.O_APPEND, 0700)
+  if err != nil {
+    panic(err)
+  }
+  defer logFile.Close()
+
+  http.ListenAndServe(":" + strconv.Itoa(port), handlers.CombinedLoggingHandler(logFile, router))
 }
