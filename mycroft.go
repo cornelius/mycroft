@@ -532,8 +532,6 @@ func main() {
 
   flag.Parse()
 
-  fmt.Printf("ARGS: %v", flag.Args())
-
   if len(flag.Args()) != 1 {
     fmt.Println("Usage: mycroft <directory>")
     os.Exit(1)
