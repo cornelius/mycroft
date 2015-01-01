@@ -6,6 +6,7 @@ import (
   "math/rand"
   "time"
   "github.com/gorilla/mux"
+  "github.com/gorilla/handlers"
   "strconv"
   "os"
   "encoding/json"
@@ -587,5 +588,5 @@ func main() {
   router.HandleFunc("/admin/tokens", BasicAuth(adminListTokens(space), lookupAdmin)).Methods("GET")
   router.Handle("/register/{token}", VarsHandler(userRegisterHandler(space))).Methods("POST")
 
-  http.ListenAndServe(":" + strconv.Itoa(port), router)
+  http.ListenAndServe(":" + strconv.Itoa(port), handlers.CombinedLoggingHandler(os.Stdout, router))
 }
