@@ -11,6 +11,7 @@ import (
   "io/ioutil"
   "path/filepath"
   "code.google.com/p/go.crypto/bcrypt"
+  "bytes"
 )
 
 func createTestSpace() Space {
@@ -149,6 +150,9 @@ func TestAdminRoot(t *testing.T) {
 
 func TestAdminRegister(t *testing.T) {
   rand.Seed(42)
+
+  var buffer bytes.Buffer
+  diary.out = &buffer
 
   expected_body := "{\"admin_id\":\"hzwuvpx8k7\",\"password\":\"1b34w985zk\"}\n"
 
@@ -556,5 +560,17 @@ func TestCreateRandomString(t *testing.T) {
 
   if randomString != expectedRandomString {
     t.Errorf("Expected '%v', got '%v'", expectedRandomString, randomString)
+  }
+}
+
+func TestDiary(t *testing.T) {
+  var buffer bytes.Buffer
+  diary.out = &buffer
+
+  diary.RegisteredAdminClient("1234")
+
+  expectedString := "Registered admin client with pid 1234\n"
+  if buffer.String() != expectedString {
+    t.Errorf("Expected '%v', got '%v'", expectedString, buffer.String())
   }
 }

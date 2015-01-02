@@ -17,7 +17,30 @@ import (
   "path/filepath"
   "io/ioutil"
   "flag"
+  "io"
 )
+
+type Diary struct {
+  out io.Writer
+}
+
+var diary Diary
+
+func (diary Diary) RegisteredAdminClient(pid string) {
+  fmt.Fprintf(diary.out, "Registered admin client with pid %v\n", pid)
+}
+
+func (diary Diary) RegisteredUserClient(token string) {
+  fmt.Fprintf(diary.out, "Registered user client with token %v\n", token)
+}
+
+func (diary Diary) CreatedToken(token string) {
+  fmt.Fprintf(diary.out, "Created token %v\n", token)
+}
+
+func (diary Diary) CreatedBucket(id string) {
+  fmt.Fprintf(diary.out, "Created bucket %v\n", id)
+}
 
 type User struct {
   PasswordHash string `json:"password_hash"`
@@ -54,7 +77,6 @@ func adminRegisterHandler(pid string, space Space) VarsHandler {
     }
     received_pid := vars["pid"]
     if received_pid == pid {
-      fmt.Printf("Register admin client with pid %v\n", received_pid)
       id, password, admin := createUser()
       space.admins[id] = admin
       space.WriteAdmins()
@@ -64,6 +86,7 @@ func adminRegisterHandler(pid string, space Space) VarsHandler {
       }
       json_string, _ := json.Marshal(json_map)
       fmt.Fprintf(w, "%v\n", string(json_string))
+      diary.RegisteredAdminClient(received_pid)
     } else {
       fmt.Printf("Registering admin client with wrong pid %v. Exiting.\n", received_pid)
       os.Exit(1)
@@ -86,7 +109,6 @@ func userRegisterHandler(space Space) VarsHandler {
       return
     }
 
-    fmt.Printf("Register user client with token %v\n", token)
     id, password, admin := createUser()
     space.users[id] = admin
     space.WriteUsers()
@@ -97,6 +119,7 @@ func userRegisterHandler(space Space) VarsHandler {
     }
     json_string, _ := json.Marshal(json_map)
     fmt.Fprintf(w, "%v\n", string(json_string))
+    diary.RegisteredUserClient(token)
   }
   return fn
 }
@@ -374,6 +397,7 @@ func createBucketHandler(space Space) handler {
     json, _ := json.Marshal(json_map)
 
     fmt.Fprintf(w, "%v\n", string(json[:]))
+    diary.CreatedBucket(bucketId)
   }
   return fn
 }
@@ -391,6 +415,7 @@ func createTokenHandler(space Space) handler {
     json, _ := json.Marshal(json_map)
 
     fmt.Fprintf(w, "%v\n", string(json[:]))
+    diary.CreatedToken(token)
   }
   return fn
 }
@@ -526,6 +551,8 @@ func readItemsHandler(space Space) VarsHandler {
 
 
 func main() {
+  diary.out = os.Stdout
+
   var logPath string
 
   flag.StringVar(&logPath, "logfile", "mycroft-access.log", "Path to log file")
