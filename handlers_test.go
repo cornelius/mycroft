@@ -14,6 +14,12 @@ import (
   "bytes"
 )
 
+func createTestSpace() Space {
+  testDir := "/tmp/mycroft-test"
+  os.RemoveAll(testDir)
+  return Space{testDir, make(map[string]User), make(map[string]User), false}
+}
+
 func TestAdminsAsJson(t *testing.T) {
   var admins map[string]User
   admins = make(map[string]User)
