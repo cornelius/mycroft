@@ -19,29 +19,6 @@ import (
   "flag"
 )
 
-type User struct {
-  PasswordHash string `json:"password_hash"`
-}
-
-func CreateRandomString(size int) string {
-  letters := "0123456789abcdefghijklmnopqrstuvwxyz"
-
-  var bytes = make([]byte, size)
-  for i := 0; i < size; i += 1 {
-    bytes[i] = letters[rand.Intn(len(letters))]
-  }
-  return string(bytes)
-}
-
-func createUser() (id string, password_string string, admin User) {
-  id = CreateRandomString(10)
-  password_string = CreateRandomString(10)
-  password := []byte(password_string)
-  passwordHash, _ := bcrypt.GenerateFromPassword(password, 10)
-  admin = User{string(passwordHash)}
-  return
-}
-
 func rootHandler(w http.ResponseWriter, r *http.Request) {
   fmt.Fprintf(w, "hello\n")
 }
