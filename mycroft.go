@@ -568,7 +568,7 @@ func main() {
     os.Exit(1)
   }
   
-  space := Space{os.Args[1], make(map[string]User), make(map[string]User), true}
+  space := Space{flag.Arg(0), make(map[string]User), make(map[string]User), true}
   
   if _, err := os.Stat(space.AdminFilePath()); err == nil {
     space.ReadAdmins()
