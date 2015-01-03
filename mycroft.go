@@ -26,8 +26,8 @@ type Diary struct {
 
 var diary Diary
 
-func (diary Diary) RegisteredAdminClient(pid string) {
-  fmt.Fprintf(diary.out, "Registered admin client with pid %v\n", pid)
+func (diary Diary) RegisteredAdminClient(pin string) {
+  fmt.Fprintf(diary.out, "Registered admin client with pin %v\n", pin)
 }
 
 func (diary Diary) RegisteredUserClient(token string) {
@@ -69,14 +69,14 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
   fmt.Fprintf(w, "hello\n")
 }
 
-func adminRegisterHandler(pid string, space Space) VarsHandler {
+func adminRegisterHandler(pin string, space Space) VarsHandler {
   fn := func(w http.ResponseWriter, r *http.Request, vars map[string]string) {
     if len(space.admins) > 0 {
       http.Error(w, "Admin client already registered", 400)
       return
     }
-    received_pid := vars["pid"]
-    if received_pid == pid {
+    received_pin := vars["pin"]
+    if received_pin == pin {
       id, password, admin := createUser()
       space.admins[id] = admin
       space.WriteAdmins()
@@ -86,9 +86,9 @@ func adminRegisterHandler(pid string, space Space) VarsHandler {
       }
       json_string, _ := json.Marshal(json_map)
       fmt.Fprintf(w, "%v\n", string(json_string))
-      diary.RegisteredAdminClient(received_pid)
+      diary.RegisteredAdminClient(received_pin)
     } else {
-      fmt.Printf("Registering admin client with wrong pid %v. Exiting.\n", received_pid)
+      fmt.Printf("Registering admin client with wrong pin %v. Exiting.\n", received_pin)
       os.Exit(1)
     }
   }
@@ -551,15 +551,19 @@ func readItemsHandler(space Space) VarsHandler {
 
 
 func main() {
+  rand.Seed(time.Now().UnixNano())
+
   diary.out = os.Stdout
 
   var logPath string
+  var pin string
 
   flag.StringVar(&logPath, "logfile", "mycroft-access.log", "Path to log file")
+  flag.StringVar(&pin, "pin", CreateRandomString(4), "PIN for initial admin resgistration")
 
   flag.Parse()
 
-  if len(flag.Args()) != 1 {
+  if flag.NArg() != 1 {
     fmt.Println("Usage: mycroft <directory>")
     os.Exit(1)
   }
@@ -581,14 +585,10 @@ func main() {
     }
   }
   
-  rand.Seed(time.Now().UnixNano())
-
-  pid := CreateRandomString(4)
-
   port := 4735
 
   if len(space.admins) == 0 {
-    fmt.Printf("To register the admin client send a POST to http://<servername>:%v/admin/register/%v\n", port, pid)
+    fmt.Printf("To register the admin client send a POST to http://<servername>:%v/admin/register/%v\n", port, pin)
   }
 
   lookupUser := func(username string) (User, bool) {
@@ -612,7 +612,7 @@ func main() {
 
   router := mux.NewRouter()
   router.HandleFunc("/", rootHandler)
-  router.Handle("/admin/register/{pid}", VarsHandler(adminRegisterHandler(pid, space))).Methods("POST")
+  router.Handle("/admin/register/{pin}", VarsHandler(adminRegisterHandler(pin, space))).Methods("POST")
   router.HandleFunc("/admin/clients", BasicAuth(adminClients(space.admins, space.users), lookupAdmin)).Methods("GET")
   router.HandleFunc("/admin/buckets", BasicAuth(adminListBuckets(space), lookupAdmin)).Methods("GET")
   router.HandleFunc("/data", BasicAuth(createBucketHandler(space), lookupUser)).Methods("POST")

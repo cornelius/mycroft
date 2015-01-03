@@ -165,7 +165,7 @@ func TestAdminRegister(t *testing.T) {
   space := createTestSpace()
 
   f := adminRegisterHandler("1234", space)
-  f(recorder, req, map[string]string{"pid":"1234"})
+  f(recorder, req, map[string]string{"pin":"1234"})
 
   body := recorder.Body.String()
   if body != expected_body {
@@ -569,7 +569,7 @@ func TestDiary(t *testing.T) {
 
   diary.RegisteredAdminClient("1234")
 
-  expectedString := "Registered admin client with pid 1234\n"
+  expectedString := "Registered admin client with pin 1234\n"
   if buffer.String() != expectedString {
     t.Errorf("Expected '%v', got '%v'", expectedString, buffer.String())
   }
