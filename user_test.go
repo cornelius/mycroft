@@ -7,15 +7,15 @@ import (
 
 func TestCreateUser(t *testing.T) {
   rand.Seed(42)
-  expected_id := "hzwuvpx8k7"
-  expected_password := "1b34w985zk"
+  expectedId := "hzwuvpx8k7"
+  expectedPassword := "1b34w985zk"
 
   id, password, _ := createUser()
 
-  if id != expected_id {
-    t.Errorf("createUser() = '%v, _', want '%v'", id, expected_id)
+  if id != expectedId {
+    t.Errorf("createUser() = '%v, _', want '%v'", id, expectedId)
   }
-  if password != expected_password {
-    t.Errorf("createUser() = '_, %v', want '%v'", password, expected_password)
+  if password != expectedPassword {
+    t.Errorf("createUser() = '_, %v', want '%v'", password, expectedPassword)
   }
 }

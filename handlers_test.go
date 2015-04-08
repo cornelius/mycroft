@@ -35,11 +35,11 @@ func TestAdminsAsJson(t *testing.T) {
   user.PasswordHash = "$2a$10$nzocaXSZD5OE.tcdOk//furws38CGiGnpw7NZWMprvp0xwGikya/S"
   users[userId] = user
 
-  json_string, _ := adminsAsJson(admins, users)
-  expected_json_string := "{\"admins\":[\"" + adminId + "\"],\"users\":[\"" + userId + "\"]}"
+  jsonString, _ := adminsAsJson(admins, users)
+  expectedJsonString := "{\"admins\":[\"" + adminId + "\"],\"users\":[\"" + userId + "\"]}"
 
-  if json_string != expected_json_string {
-    t.Errorf("adminsAsJson() = '%v', want '%v'", json_string, expected_json_string)
+  if jsonString != expectedJsonString {
+    t.Errorf("adminsAsJson() = '%v', want '%v'", jsonString, expectedJsonString)
   }
 }
 
@@ -117,7 +117,7 @@ func TestValidatePassword(t *testing.T) {
 }
 
 func TestAdminRoot(t *testing.T) {
-  expected_body := "hello\n"
+  expectedBody := "hello\n"
 
   recorder := httptest.NewRecorder()
   req, err := http.NewRequest("GET", "http://example.com", nil)
@@ -128,8 +128,8 @@ func TestAdminRoot(t *testing.T) {
   rootHandler(recorder, req)
 
   body := recorder.Body.String()
-  if body != expected_body {
-    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  if body != expectedBody {
+    t.Errorf("Expected body '%v', got '%v'", expectedBody, body)
   }
 }
 
@@ -139,7 +139,7 @@ func TestAdminRegister(t *testing.T) {
   var buffer bytes.Buffer
   diary.out = &buffer
 
-  expected_body := "{\"admin_id\":\"hzwuvpx8k7\",\"password\":\"1b34w985zk\"}\n"
+  expectedBody := "{\"admin_id\":\"hzwuvpx8k7\",\"password\":\"1b34w985zk\"}\n"
 
   recorder := httptest.NewRecorder()
   req, err := http.NewRequest("GET", "http://example.com/admin/register/1234", nil)
@@ -153,13 +153,13 @@ func TestAdminRegister(t *testing.T) {
   f(recorder, req, map[string]string{"pin":"1234"})
 
   body := recorder.Body.String()
-  if body != expected_body {
-    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  if body != expectedBody {
+    t.Errorf("Expected body '%v', got '%v'", expectedBody, body)
   }
 }
 
 func TestAdminClients(t *testing.T) {
-  expected_body := "{\"admins\":[\"94099423\"],\"users\":[]}\n"
+  expectedBody := "{\"admins\":[\"94099423\"],\"users\":[]}\n"
 
   recorder := httptest.NewRecorder()
   req, err := http.NewRequest("GET", "http://example.com/admin/clients", nil)
@@ -176,15 +176,15 @@ func TestAdminClients(t *testing.T) {
   f(recorder, req)
 
   body := recorder.Body.String()
-  if body != expected_body {
-    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  if body != expectedBody {
+    t.Errorf("Expected body '%v', got '%v'", expectedBody, body)
   }
 }
 
 func TestCreateBucket(t *testing.T) {
   rand.Seed(42)
 
-  expected_body := "{\"bucket_id\":\"hzwuvpx8k7\"}\n"
+  expectedBody := "{\"bucket_id\":\"hzwuvpx8k7\"}\n"
 
   recorder := httptest.NewRecorder()
   req, err := http.NewRequest("POST", "http://example.com/data", nil)
@@ -198,8 +198,8 @@ func TestCreateBucket(t *testing.T) {
   f(recorder, req)
 
   body := recorder.Body.String()
-  if body != expected_body {
-    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  if body != expectedBody {
+    t.Errorf("Expected body '%v', got '%v'", expectedBody, body)
   }
 }
 
@@ -222,14 +222,14 @@ func TestAdminListBuckets(t *testing.T) {
   buckets = append(buckets, bucketId2)
   sort.Strings(buckets)
 
-  expected_body := "[\"" + buckets[0] + "\",\"" + buckets[1] + "\"]\n"
+  expectedBody := "[\"" + buckets[0] + "\",\"" + buckets[1] + "\"]\n"
 
   f := adminListBucketsHandler(space)
   f(recorder, req)
 
   body := recorder.Body.String()
-  if body != expected_body {
-    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  if body != expectedBody {
+    t.Errorf("Expected body '%v', got '%v'", expectedBody, body)
   }
 }
 
@@ -242,14 +242,14 @@ func TestAdminListBucketsEmpty(t *testing.T) {
 
   space := createTestSpace()
 
-  expected_body := "[]\n"
+  expectedBody := "[]\n"
 
   f := adminListBucketsHandler(space)
   f(recorder, req)
 
   body := recorder.Body.String()
-  if body != expected_body {
-    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  if body != expectedBody {
+    t.Errorf("Expected body '%v', got '%v'", expectedBody, body)
   }
 }
 
@@ -272,11 +272,11 @@ func TestWriteAndReadItems(t *testing.T) {
   f := readItemsHandler(space)
   f(recorder, req, map[string]string{"bucket_id":bucketId})
 
-  expected_body := "[]\n"
+  expectedBody := "[]\n"
 
   body := recorder.Body.String()
-  if body != expected_body {
-    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  if body != expectedBody {
+    t.Errorf("Expected body '%v', got '%v'", expectedBody, body)
   }
 
 
@@ -293,11 +293,11 @@ func TestWriteAndReadItems(t *testing.T) {
 
   expectedItemId := "1b34w985zk"
 
-  expected_body = "{\"item_id\":\"" + expectedItemId + "\",\"parent_id\":\"\"}\n"
+  expectedBody = "{\"item_id\":\"" + expectedItemId + "\",\"parent_id\":\"\"}\n"
 
   body = recorder.Body.String()
-  if body != expected_body {
-    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  if body != expectedBody {
+    t.Errorf("Expected body '%v', got '%v'", expectedBody, body)
   }
 
   filePath := filepath.Join(space.DataDirPath(), bucketId, expectedItemId)
@@ -309,9 +309,9 @@ func TestWriteAndReadItems(t *testing.T) {
   expectedContent1 := "{\"item_id\":\"" + expectedItemId + "\",\"parent_id\":\"\",\"content\":\"" + data + "\"}"
 
   content, _ := ioutil.ReadFile(filePath)
-  content_string := string(content)
-  if content_string != expectedContent1 {
-    t.Errorf("Got content '%v', expected '%v'", content_string, expectedContent1)
+  contentString := string(content)
+  if contentString != expectedContent1 {
+    t.Errorf("Got content '%v', expected '%v'", contentString, expectedContent1)
   }
 
 
@@ -327,11 +327,11 @@ func TestWriteAndReadItems(t *testing.T) {
 
   f(recorder, req, map[string]string{"bucket_id":bucketId})
 
-  expected_body = "{\"item_id\":\"" + expectedItemId2 + "\",\"parent_id\":\"" + expectedItemId + "\"}\n"
+  expectedBody = "{\"item_id\":\"" + expectedItemId2 + "\",\"parent_id\":\"" + expectedItemId + "\"}\n"
 
   body = recorder.Body.String()
-  if body != expected_body {
-    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  if body != expectedBody {
+    t.Errorf("Expected body '%v', got '%v'", expectedBody, body)
   }
 
   filePath = filepath.Join(space.DataDirPath(), bucketId, expectedItemId2)
@@ -343,9 +343,9 @@ func TestWriteAndReadItems(t *testing.T) {
   expectedContent2 := "{\"item_id\":\"" + expectedItemId2 + "\",\"parent_id\":\"" + expectedItemId + "\",\"content\":\"" + data2 + "\"}"
 
   content, _ = ioutil.ReadFile(filePath)
-  content_string = string(content)
-  if content_string != expectedContent2 {
-    t.Errorf("Got content '%v', expected '%v'", content_string, expectedContent2)
+  contentString = string(content)
+  if contentString != expectedContent2 {
+    t.Errorf("Got content '%v', expected '%v'", contentString, expectedContent2)
   }
 
 
@@ -358,11 +358,11 @@ func TestWriteAndReadItems(t *testing.T) {
   f = readItemsHandler(space)
   f(recorder, req, map[string]string{"bucket_id":bucketId})
 
-  expected_body = "[" + expectedContent2 + "," + expectedContent1 + "]\n"
+  expectedBody = "[" + expectedContent2 + "," + expectedContent1 + "]\n"
 
   body = recorder.Body.String()
-  if body != expected_body {
-    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  if body != expectedBody {
+    t.Errorf("Expected body '%v', got '%v'", expectedBody, body)
   }
 }
 
@@ -411,14 +411,14 @@ func TestAdminListTokens(t *testing.T) {
   tokens = append(tokens, token2)
   sort.Strings(tokens)
 
-  expected_body := "[\"" + tokens[0] + "\",\"" + tokens[1] + "\"]\n"
+  expectedBody := "[\"" + tokens[0] + "\",\"" + tokens[1] + "\"]\n"
 
   f := adminListTokensHandler(space)
   f(recorder, req)
 
   body := recorder.Body.String()
-  if body != expected_body {
-    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  if body != expectedBody {
+    t.Errorf("Expected body '%v', got '%v'", expectedBody, body)
   }
 }
 
@@ -431,14 +431,14 @@ func TestAdminListTokensEmpty(t *testing.T) {
 
   space := createTestSpace()
 
-  expected_body := "[]\n"
+  expectedBody := "[]\n"
 
   f := adminListTokensHandler(space)
   f(recorder, req)
 
   body := recorder.Body.String()
-  if body != expected_body {
-    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  if body != expectedBody {
+    t.Errorf("Expected body '%v', got '%v'", expectedBody, body)
   }
 }
 
@@ -447,7 +447,7 @@ func TestUserRegister(t *testing.T) {
 
   expectedUserId := "85zky6srgh"
   expectedUserPassword := "ejvbievihm"
-  expected_body := "{\"user_id\":\"" + expectedUserId + "\",\"user_password\":\"" + expectedUserPassword + "\"}\n"
+  expectedBody := "{\"user_id\":\"" + expectedUserId + "\",\"user_password\":\"" + expectedUserPassword + "\"}\n"
 
   space := createTestSpace()
   token, _ := space.CreateToken()
@@ -489,8 +489,8 @@ func TestUserRegister(t *testing.T) {
   }
 
   body := recorder.Body.String()
-  if body != expected_body {
-    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  if body != expectedBody {
+    t.Errorf("Expected body '%v', got '%v'", expectedBody, body)
   }
 
   if _, err := os.Stat(tokenPath); err == nil {
@@ -505,7 +505,7 @@ func TestUserRegister(t *testing.T) {
 }
 
 func TestUserClients(t *testing.T) {
-  expected_body := "{\"admins\":[],\"users\":[\"94099423\"]}\n"
+  expectedBody := "{\"admins\":[],\"users\":[\"94099423\"]}\n"
 
   recorder := httptest.NewRecorder()
   req, err := http.NewRequest("GET", "http://example.com/admin/clients", nil)
@@ -522,7 +522,7 @@ func TestUserClients(t *testing.T) {
   f(recorder, req)
 
   body := recorder.Body.String()
-  if body != expected_body {
-    t.Errorf("Expected body '%v', got '%v'", expected_body, body)
+  if body != expectedBody {
+    t.Errorf("Expected body '%v', got '%v'", expectedBody, body)
   }
 }

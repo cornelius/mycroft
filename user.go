@@ -8,10 +8,10 @@ type User struct {
   PasswordHash string `json:"password_hash"`
 }
 
-func createUser() (id string, password_string string, admin User) {
+func createUser() (id string, passwordString string, admin User) {
   id = CreateRandomString(10)
-  password_string = CreateRandomString(10)
-  password := []byte(password_string)
+  passwordString = CreateRandomString(10)
+  password := []byte(passwordString)
   passwordHash, _ := bcrypt.GenerateFromPassword(password, 10)
   admin = User{string(passwordHash)}
   return

@@ -24,20 +24,20 @@ func adminRegisterHandler(pin string, space Space) VarsHandler {
       http.Error(w, "Admin client already registered", 400)
       return
     }
-    received_pin := vars["pin"]
-    if received_pin == pin {
+    receivedPin := vars["pin"]
+    if receivedPin == pin {
       id, password, admin := createUser()
       space.admins[id] = admin
       space.WriteAdmins()
-      json_map := map[string]string{
+      jsonMap := map[string]string{
         "admin_id": id,
         "password": password,
       }
-      json_string, _ := json.Marshal(json_map)
-      fmt.Fprintf(w, "%v\n", string(json_string))
-      diary.RegisteredAdminClient(received_pin)
+      jsonString, _ := json.Marshal(jsonMap)
+      fmt.Fprintf(w, "%v\n", string(jsonString))
+      diary.RegisteredAdminClient(receivedPin)
     } else {
-      fmt.Printf("Registering admin client with wrong pin %v. Exiting.\n", received_pin)
+      fmt.Printf("Registering admin client with wrong pin %v. Exiting.\n", receivedPin)
       os.Exit(1)
     }
   }
@@ -62,33 +62,33 @@ func userRegisterHandler(space Space) VarsHandler {
     space.users[id] = admin
     space.WriteUsers()
     space.RemoveToken(token)
-    json_map := map[string]string{
+    jsonMap := map[string]string{
       "user_id": id,
       "user_password": password,
     }
-    json_string, _ := json.Marshal(json_map)
-    fmt.Fprintf(w, "%v\n", string(json_string))
+    jsonString, _ := json.Marshal(jsonMap)
+    fmt.Fprintf(w, "%v\n", string(jsonString))
     diary.RegisteredUserClient(token)
   }
   return fn
 }
 
 func adminsAsJson(admins map[string]User, users map[string]User) (string, error) {
-  json_hash := make(map[string][]string)
+  jsonHash := make(map[string][]string)
 
-  json_array1 := []string{}
+  jsonArray1 := []string{}
   for id := range admins {
-    json_array1 = append(json_array1, id)
+    jsonArray1 = append(jsonArray1, id)
   }
-  json_hash["admins"] = json_array1
+  jsonHash["admins"] = jsonArray1
 
-  json_array2 := []string{}
+  jsonArray2 := []string{}
   for id := range users {
-    json_array2 = append(json_array2, id)
+    jsonArray2 = append(jsonArray2, id)
   }
-  json_hash["users"] = json_array2
+  jsonHash["users"] = jsonArray2
 
-  json, err := json.Marshal(json_hash)
+  json, err := json.Marshal(jsonHash)
 
   return string(json[:]), err
 }
@@ -243,9 +243,9 @@ func createBucketHandler(space Space) handler {
       return
     }
 
-    json_map := make(map[string]string)
-    json_map["bucket_id"] = bucketId
-    json, _ := json.Marshal(json_map)
+    jsonMap := make(map[string]string)
+    jsonMap["bucket_id"] = bucketId
+    json, _ := json.Marshal(jsonMap)
 
     fmt.Fprintf(w, "%v\n", string(json[:]))
     diary.CreatedBucket(bucketId)
@@ -261,9 +261,9 @@ func createTokenHandler(space Space) handler {
       return
     }
 
-    json_map := make(map[string]string)
-    json_map["token"] = token
-    json, _ := json.Marshal(json_map)
+    jsonMap := make(map[string]string)
+    jsonMap["token"] = token
+    json, _ := json.Marshal(jsonMap)
 
     fmt.Fprintf(w, "%v\n", string(json[:]))
     diary.CreatedToken(token)
@@ -311,13 +311,13 @@ func createItemHandler(space Space) VarsHandler {
     }
 
     item := Item{itemId, parentId, string(body)}
-    json_item, err := json.Marshal(item)
+    jsonItem, err := json.Marshal(item)
     if err != nil {
       http.Error(w, err.Error(), 500)
       return
     }
 
-    err = ioutil.WriteFile(itemFilePath, json_item, 0600)
+    err = ioutil.WriteFile(itemFilePath, jsonItem, 0600)
     if err != nil {
       http.Error(w, err.Error(), 500)
       return
@@ -329,10 +329,10 @@ func createItemHandler(space Space) VarsHandler {
       return
     }
 
-    json_map := make(map[string]string)
-    json_map["item_id"] = itemId
-    json_map["parent_id"] = parentId
-    json, _ := json.Marshal(json_map)
+    jsonMap := make(map[string]string)
+    jsonMap["item_id"] = itemId
+    jsonMap["parent_id"] = parentId
+    json, _ := json.Marshal(jsonMap)
 
     fmt.Fprintf(w, "%v\n", string(json[:]))
   }
