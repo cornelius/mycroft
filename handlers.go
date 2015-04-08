@@ -93,7 +93,7 @@ func adminsAsJson(admins map[string]User, users map[string]User) (string, error)
   return string(json[:]), err
 }
 
-func adminClients(admins map[string]User, users map[string]User) handler {
+func adminListClientsHandler(admins map[string]User, users map[string]User) handler {
   fn := func(w http.ResponseWriter, r *http.Request) {
     json, err := adminsAsJson(admins, users)
     if err != nil {
@@ -106,7 +106,7 @@ func adminClients(admins map[string]User, users map[string]User) handler {
   return fn
 }
 
-func adminListBuckets(space Space) handler {
+func adminListBucketsHandler(space Space) handler {
   fn := func(w http.ResponseWriter, r *http.Request) {
     buckets, err := ioutil.ReadDir(space.DataDirPath())
     if err != nil {
@@ -132,7 +132,7 @@ func adminListBuckets(space Space) handler {
   return fn
 }
 
-func adminListTokens(space Space) handler {
+func adminListTokensHandler(space Space) handler {
   fn := func(w http.ResponseWriter, r *http.Request) {
     tokens, err := ioutil.ReadDir(space.TokenDirPath())
     if err != nil {

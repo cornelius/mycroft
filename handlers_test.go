@@ -172,7 +172,7 @@ func TestAdminClients(t *testing.T) {
 
   users := make(map[string]User)
 
-  f := adminClients(admins, users)
+  f := adminListClientsHandler(admins, users)
   f(recorder, req)
 
   body := recorder.Body.String()
@@ -224,7 +224,7 @@ func TestAdminListBuckets(t *testing.T) {
 
   expected_body := "[\"" + buckets[0] + "\",\"" + buckets[1] + "\"]\n"
 
-  f := adminListBuckets(space)
+  f := adminListBucketsHandler(space)
   f(recorder, req)
 
   body := recorder.Body.String()
@@ -244,7 +244,7 @@ func TestAdminListBucketsEmpty(t *testing.T) {
 
   expected_body := "[]\n"
 
-  f := adminListBuckets(space)
+  f := adminListBucketsHandler(space)
   f(recorder, req)
 
   body := recorder.Body.String()
@@ -413,7 +413,7 @@ func TestAdminListTokens(t *testing.T) {
 
   expected_body := "[\"" + tokens[0] + "\",\"" + tokens[1] + "\"]\n"
 
-  f := adminListTokens(space)
+  f := adminListTokensHandler(space)
   f(recorder, req)
 
   body := recorder.Body.String()
@@ -433,7 +433,7 @@ func TestAdminListTokensEmpty(t *testing.T) {
 
   expected_body := "[]\n"
 
-  f := adminListTokens(space)
+  f := adminListTokensHandler(space)
   f(recorder, req)
 
   body := recorder.Body.String()
@@ -518,7 +518,7 @@ func TestUserClients(t *testing.T) {
   users := make(map[string]User)
   users["94099423"] = User{"xxx"}
 
-  f := adminClients(admins, users)
+  f := adminListClientsHandler(admins, users)
   f(recorder, req)
 
   body := recorder.Body.String()
