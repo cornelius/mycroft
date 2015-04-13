@@ -77,6 +77,7 @@ func main() {
   router.Handle("/admin/register/{pin}", VarsHandler(adminRegisterHandler(pin, space))).Methods("POST")
   router.HandleFunc("/admin/clients", BasicAuth(adminListClientsHandler(space.admins, space.users), lookupAdmin)).Methods("GET")
   router.HandleFunc("/admin/buckets", BasicAuth(adminListBucketsHandler(space), lookupAdmin)).Methods("GET")
+  router.Handle("/admin/buckets/{bucket_id}", BasicAuthVars(VarsHandler(adminDeleteBucketHandler(space)), lookupAdmin)).Methods("DELETE")
   router.HandleFunc("/data", BasicAuth(createBucketHandler(space), lookupUser)).Methods("POST")
   router.Handle("/data/{bucket_id}", BasicAuthVars(VarsHandler(createItemHandler(space)), lookupUser)).Methods("POST")
   router.Handle("/data/{bucket_id}", BasicAuthVars(VarsHandler(readItemsHandler(space)), lookupUser)).Methods("GET")

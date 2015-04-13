@@ -88,6 +88,13 @@ func (space Space) CreateBucket() (string, error) {
   return bucketId, err
 }
 
+func (space Space) DeleteBucket(bucketId string) (error) {
+  bucketDirPath := filepath.Join(space.DataDirPath(), bucketId)
+  err := os.RemoveAll(bucketDirPath)
+
+  return err
+}
+
 func (space Space) CreateToken() (string, error) {
   token := CreateRandomString(16)
 

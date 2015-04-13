@@ -26,3 +26,7 @@ func (diary Diary) CreatedToken(token string) {
 func (diary Diary) CreatedBucket(id string) {
   fmt.Fprintf(diary.out, "Created bucket %v\n", id)
 }
+
+func (diary Diary) DeletedBucket(id string) {
+  fmt.Fprintf(diary.out, "Deleted bucket %v\n", id)
+}

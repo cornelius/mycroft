@@ -132,6 +132,17 @@ func adminListBucketsHandler(space Space) handler {
   return fn
 }
 
+func adminDeleteBucketHandler(space Space) VarsHandler {
+  fn := func(w http.ResponseWriter, r *http.Request, vars map[string]string) {
+    bucketId := vars["bucket_id"]
+
+    space.DeleteBucket(bucketId)
+
+    diary.DeletedBucket(bucketId)
+  }
+  return fn
+}
+
 func adminListTokensHandler(space Space) handler {
   fn := func(w http.ResponseWriter, r *http.Request) {
     tokens, err := ioutil.ReadDir(space.TokenDirPath())

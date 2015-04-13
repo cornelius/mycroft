@@ -253,6 +253,41 @@ func TestAdminListBucketsEmpty(t *testing.T) {
   }
 }
 
+func TestAdminDeleteBucket(t *testing.T) {
+  rand.Seed(42)
+
+  space := createTestSpace()
+
+  bucketId, _ := space.CreateBucket()
+
+  filePath := filepath.Join(space.DataDirPath(), bucketId)
+
+  if _, err := os.Stat(filePath); err != nil {
+    t.Errorf("File '%v' should exist but doesn't", filePath)
+  }
+
+  url := "http://example.com/admin/buckets/" + bucketId
+
+  recorder := httptest.NewRecorder()
+  req, err := http.NewRequest("DELETE", url, nil)
+  if err != nil {
+    t.Errorf("Expected no error")
+  }
+
+  f := adminDeleteBucketHandler(space)
+  f(recorder, req, map[string]string{"bucket_id":bucketId})
+
+  expectedCode := 200
+  code := recorder.Code
+  if code != expectedCode {
+    t.Errorf("Expected code '%v', got '%v'", expectedCode, code)
+  }
+
+  if _, err := os.Stat(filePath); err == nil {
+    t.Errorf("File '%v' should not exist but does", filePath)
+  }
+}
+
 func TestWriteAndReadItems(t *testing.T) {
   rand.Seed(42)
 
