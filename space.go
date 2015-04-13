@@ -95,6 +95,12 @@ func (space Space) DeleteBucket(bucketId string) (error) {
   return err
 }
 
+func (space Space) HasBucket(bucketId string) (error) {
+  bucketDirPath := filepath.Join(space.DataDirPath(), bucketId)
+  _, err := os.Stat(bucketDirPath)
+  return err
+}
+
 func (space Space) CreateToken() (string, error) {
   token := CreateRandomString(16)
 

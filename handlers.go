@@ -136,7 +136,17 @@ func adminDeleteBucketHandler(space Space) VarsHandler {
   fn := func(w http.ResponseWriter, r *http.Request, vars map[string]string) {
     bucketId := vars["bucket_id"]
 
-    space.DeleteBucket(bucketId)
+    err := space.HasBucket(bucketId)
+    if err != nil {
+      http.Error(w, "Bucket '" + bucketId + "' does not exist", 404)
+      return
+    }
+
+    err = space.DeleteBucket(bucketId)
+    if err != nil {
+      http.Error(w, err.Error(), 500)
+      return
+    }
 
     diary.DeletedBucket(bucketId)
   }
