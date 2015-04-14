@@ -592,3 +592,21 @@ func TestUserClients(t *testing.T) {
     t.Errorf("Expected body '%v', got '%v'", expectedBody, body)
   }
 }
+
+func TestPing(t *testing.T) {
+  expectedBody := "pong\n"
+
+  recorder := httptest.NewRecorder()
+  req, err := http.NewRequest("GET", "http://example.com/ping", nil)
+  if err != nil {
+    t.Errorf("Expected no error")
+  }
+
+  f := pingHandler()
+  f(recorder, req)
+
+  body := recorder.Body.String()
+  if body != expectedBody {
+    t.Errorf("Expected body '%v', got '%v'", expectedBody, body)
+  }
+}

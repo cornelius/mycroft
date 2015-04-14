@@ -420,3 +420,10 @@ func readItemsHandler(space Space) VarsHandler {
   }
   return fn
 }
+
+func pingHandler() handler {
+  fn := func(w http.ResponseWriter, r *http.Request) {
+    fmt.Fprintf(w, "pong\n")
+  }
+  return fn
+}

@@ -84,6 +84,7 @@ func main() {
   router.HandleFunc("/tokens", BasicAuth(createTokenHandler(space), lookupAny)).Methods("POST")
   router.HandleFunc("/admin/tokens", BasicAuth(adminListTokensHandler(space), lookupAdmin)).Methods("GET")
   router.Handle("/register/{token}", VarsHandler(userRegisterHandler(space))).Methods("POST")
+  router.HandleFunc("/ping", BasicAuth(pingHandler(), lookupUser)).Methods("GET")
 
   logFile, err := os.OpenFile(logPath, os.O_WRONLY | os.O_CREATE | os.O_APPEND, 0700)
   if err != nil {
