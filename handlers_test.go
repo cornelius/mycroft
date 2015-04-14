@@ -594,7 +594,7 @@ func TestUserClients(t *testing.T) {
 }
 
 func TestPing(t *testing.T) {
-  expectedBody := "pong\n"
+  expectedBody := "{\"ping\":\"pong\"}\n"
 
   recorder := httptest.NewRecorder()
   req, err := http.NewRequest("GET", "http://example.com/ping", nil)
