@@ -19,11 +19,18 @@ func main() {
 
   var logPath string
   var pin string
+  var showVersion bool
 
   flag.StringVar(&logPath, "logfile", "mycroft-access.log", "Path to log file")
   flag.StringVar(&pin, "pin", CreateRandomString(4), "PIN for initial admin resgistration")
+  flag.BoolVar(&showVersion, "version", false, "Show version and exit")
 
   flag.Parse()
+
+  if showVersion {
+    fmt.Printf("Version: %v\n", Version)
+    os.Exit(0)
+  }
 
   if flag.NArg() != 1 {
     fmt.Println("Usage: mycroft <directory>")
