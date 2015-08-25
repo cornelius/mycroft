@@ -22,7 +22,7 @@ Url:            https://github.com/cornelius/mycroft
 Group:          Development/Languages/Other
 Source:         <%= release_archive %>
 BuildRequires:  go-devel unzip
-BuildRequires:  go-crypto go-mux go-context
+BuildRequires:  go-crypto go-mux go-context go-handlers
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 %{go_requires}
 %{go_provides}
